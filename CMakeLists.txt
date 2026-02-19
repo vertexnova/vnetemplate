@@ -9,7 +9,21 @@
 #==============================================================================
 
 cmake_minimum_required(VERSION 3.16)
-project(vnetemplate VERSION 1.0.0 LANGUAGES CXX)
+
+# Single source of truth for version (updated by release-please on release)
+set(VERSION_FILE "${CMAKE_SOURCE_DIR}/VERSION")
+if(EXISTS "${VERSION_FILE}")
+    file(READ "${VERSION_FILE}" VERSION_FROM_FILE)
+    string(STRIP "${VERSION_FROM_FILE}" VERSION_FROM_FILE)
+    if(VERSION_FROM_FILE)
+        set(PROJECT_VERSION_INIT "${VERSION_FROM_FILE}")
+    endif()
+endif()
+if(NOT DEFINED PROJECT_VERSION_INIT)
+    set(PROJECT_VERSION_INIT "1.0.0")
+endif()
+
+project(vnetemplate VERSION ${PROJECT_VERSION_INIT} LANGUAGES CXX)
 
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)

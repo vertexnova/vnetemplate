@@ -38,7 +38,7 @@ Thank you for your interest in contributing. This document explains how to build
 ## Pull requests
 
 - Ensure the project builds and tests pass (locally or via CI).
-- Keep changes focused; update [CHANGELOG.md](CHANGELOG.md) for user-facing or notable changes.
+- Keep changes focused. **Changelog:** We use [release-please](https://github.com/googleapis/release-please); do not hand-edit CHANGELOG.md for versioned entries. Use **Conventional Commits** (or PR titles) so release-please can generate notes: `feat:`, `fix:`, `perf:`, `docs:`, `chore:`, `ci:` (e.g. `feat: add shader cache`). When the release PR is merged, CHANGELOG and VERSION are updated and a tag is created.
 - If you add or change behavior, add or update tests as appropriate.
 
 ## Code review

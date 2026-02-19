@@ -110,6 +110,10 @@ GitHub Actions runs on push and pull requests to `main`: format check, clang-tid
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) for build, test, and style. We follow the [Contributor Covenant](CODE_OF_CONDUCT.md) Code of Conduct.
 
+## Releases
+
+Releases are managed by [release-please](https://github.com/googleapis/release-please). The **VERSION** file at the repo root is the single source of truth; CMake reads it for `get_version()`. Do not hand-edit CHANGELOG.md for versioned entries—use Conventional Commits (e.g. `feat:`, `fix:`) so the release PR updates CHANGELOG and VERSION and creates the tag. See [CONTRIBUTING.md](CONTRIBUTING.md).
+
 ## License
 
 See [LICENSE](LICENSE).
