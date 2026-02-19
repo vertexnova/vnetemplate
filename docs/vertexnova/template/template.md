@@ -1,4 +1,4 @@
-# Vertexnova Template
+# VertexNova Template
 
 ## Overview
 
@@ -60,7 +60,7 @@ const char* msg = vne::template_ns::hello();        // e.g. "Hello from VneTempl
 | Option | Default | Description |
 |--------|---------|-------------|
 | `VNE_TEMPLATE_TESTS` | ON | Build unit tests. |
-| `VNE_TEMPLATE_EXAMPLES` | ON | Build examples. |
+| `VNE_TEMPLATE_EXAMPLES` | ON (dev/top-level) / OFF (submodule) | Build examples (on by default in dev builds, off when used as a submodule). |
 | `WARNINGS_AS_ERRORS` | OFF | Treat compiler warnings as errors. |
 | `ENABLE_DOXYGEN` | OFF | Generate Doxygen documentation. |
 

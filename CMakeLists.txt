@@ -11,7 +11,7 @@
 cmake_minimum_required(VERSION 3.19)
 
 # Single source of truth for version (updated by release-please on release)
-set(VERSION_FILE "${CMAKE_SOURCE_DIR}/VERSION")
+set(VERSION_FILE "${CMAKE_CURRENT_LIST_DIR}/VERSION")
 if(EXISTS "${VERSION_FILE}")
     file(READ "${VERSION_FILE}" VERSION_FROM_FILE)
     string(STRIP "${VERSION_FROM_FILE}" VERSION_FROM_FILE)
