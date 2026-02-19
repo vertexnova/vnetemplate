@@ -146,6 +146,18 @@ include_directories(${CMAKE_BINARY_DIR})
 #==============================================================================
 # Build Options
 #==============================================================================
+# Option naming and deps:
+# - Use VNE_TEMPLATE_* for vnetemplate-only options so there is no conflict when
+#   this project is used as a submodule (parent can set VNE_TEMPLATE_TESTS=OFF
+#   without affecting BUILD_TESTS used by other deps).
+# - BUILD_TESTS / BUILD_EXAMPLES are global; we force them (via VneUseDep
+#   CACHE_VARS) before add_subdirectory for each dep so deps do not build their
+#   own tests/examples when used as internal libs. We restore after each dep.
+# - ENABLE_COVERAGE, ENABLE_DOXYGEN, WARNINGS_AS_ERRORS are global: if multiple
+#   libs in deps/internal define the same option name, the first to run wins the
+#   default; -D from the command line applies to all. No duplicate option()
+#   definition (CMake uses cache), but behavior is "one value for the whole tree."
+#==============================================================================
 if(CMAKE_PROJECT_NAME STREQUAL "vnetemplate")
     set(VNE_TEMPLATE_DEV_DEFAULT ON)
 else()
@@ -161,7 +173,15 @@ endif()
 option(VNE_TEMPLATE_TESTS "Build vnetemplate test suite (turn OFF when used as submodule)" ON)
 option(VNE_TEMPLATE_EXAMPLES "Build vnetemplate example programs (turn OFF when used as submodule)" OFF)
 option(ENABLE_DOXYGEN "Enable Doxygen documentation builds" OFF)
+option(ENABLE_COVERAGE "Enable code coverage reporting" OFF)
 option(WARNINGS_AS_ERRORS "Treat compiler warnings as errors" OFF)
+
+#==============================================================================
+# Coverage Support (match vnelogging: include FindCoverage only when enabled)
+#==============================================================================
+if(ENABLE_COVERAGE)
+    include(FindCoverage)
+endif()
 
 if(VNE_TEMPLATE_CI)
     set(VNE_TEMPLATE_TESTS ON CACHE BOOL "" FORCE)
