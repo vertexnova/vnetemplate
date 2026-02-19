@@ -1,6 +1,24 @@
+<p align="center">
+  <img src="icons/vertexnova_logo_medallion_with_text.svg" alt="VertexNova Template" width="320"/>
+</p>
+
+<p align="center">
+  <strong>Minimal C++ project template for the VertexNova ecosystem</strong>
+</p>
+
+<p align="center">
+  <a href="https://github.com/vertexnova/vnetemplate/actions/workflows/ci.yml">
+    <img src="https://github.com/vertexnova/vnetemplate/actions/workflows/ci.yml/badge.svg?branch=main" alt="CI"/>
+  </a>
+  <img src="https://img.shields.io/badge/C%2B%2B-20-blue.svg" alt="C++ Standard"/>
+  <img src="https://img.shields.io/badge/license-Apache%202.0-green.svg" alt="License"/>
+</p>
+
+---
+
 # VneTemplate
 
-Minimal VertexNova-standard C++ template: CMake, deps (external + internal), tests, and documentation.
+Minimal VertexNova-standard C++ template: CMake, deps (external + internal), tests, examples, and documentation. Use it as a starting point for new libraries or apps in the [VertexNova](https://github.com/vertexnova) stack.
 
 ## Directory layout
 
@@ -76,6 +94,7 @@ Or:
 
 ## Documentation
 
+- **Template overview and diagrams:** [docs/vertexnova/template/template.md](docs/vertexnova/template/template.md) — context and API diagrams (Draw.io sources in `docs/vertexnova/template/diagrams/`).
 - **API docs:** Configure with Doxygen enabled and build the doc target:
 
   ```bash
