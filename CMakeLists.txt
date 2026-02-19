@@ -8,7 +8,7 @@
 # Autodoc:   yes
 #==============================================================================
 
-cmake_minimum_required(VERSION 3.16)
+cmake_minimum_required(VERSION 3.19)
 
 # Single source of truth for version (updated by release-please on release)
 set(VERSION_FILE "${CMAKE_SOURCE_DIR}/VERSION")
@@ -161,6 +161,7 @@ endif()
 option(VNE_TEMPLATE_TESTS "Build vnetemplate test suite (turn OFF when used as submodule)" ON)
 option(VNE_TEMPLATE_EXAMPLES "Build vnetemplate example programs (turn OFF when used as submodule)" OFF)
 option(ENABLE_DOXYGEN "Enable Doxygen documentation builds" OFF)
+option(WARNINGS_AS_ERRORS "Treat compiler warnings as errors" OFF)
 
 if(VNE_TEMPLATE_CI)
     set(VNE_TEMPLATE_TESTS ON CACHE BOOL "" FORCE)
