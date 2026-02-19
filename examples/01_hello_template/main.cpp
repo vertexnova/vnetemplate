@@ -9,14 +9,16 @@
  * ----------------------------------------------------------------------
  */
 
+#include "common/logging_guard.h"
 #include "vertexnova/template/template.h"
-#include <iostream>
 
 int main() {
+    vne::template_ns::examples::LoggingGuard logging_guard;
+
     using namespace vne::template_ns;
 
-    std::cout << hello() << std::endl;
-    std::cout << "Version: " << get_version() << std::endl;
+    VNE_LOG_INFO << hello();
+    VNE_LOG_INFO << "Version: " << get_version();
 
     return 0;
 }
