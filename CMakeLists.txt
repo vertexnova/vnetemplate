@@ -146,16 +146,19 @@ endif()
 
 option(BUILD_TESTS "Build the test suite" ON)
 option(VNE_TEMPLATE_TESTS "Build vnetemplate test suite (turn OFF when used as submodule)" ON)
+option(BUILD_EXAMPLES "Build example programs" OFF)
 option(ENABLE_DOXYGEN "Enable Doxygen documentation builds" OFF)
 
 if(VNE_TEMPLATE_CI)
     set(BUILD_TESTS ON CACHE BOOL "" FORCE)
     set(VNE_TEMPLATE_TESTS ON CACHE BOOL "" FORCE)
-    message(STATUS "VneTemplate: CI build -> BUILD_TESTS=ON, VNE_TEMPLATE_TESTS=ON")
+    set(BUILD_EXAMPLES OFF CACHE BOOL "" FORCE)
+    message(STATUS "VneTemplate: CI build -> BUILD_TESTS=ON, VNE_TEMPLATE_TESTS=ON, BUILD_EXAMPLES=OFF")
 elseif(VNE_TEMPLATE_DEV)
     set(BUILD_TESTS ON CACHE BOOL "" FORCE)
     set(VNE_TEMPLATE_TESTS ON CACHE BOOL "" FORCE)
-    message(STATUS "VneTemplate: DEV build -> BUILD_TESTS=ON, VNE_TEMPLATE_TESTS=ON")
+    set(BUILD_EXAMPLES ON CACHE BOOL "" FORCE)
+    message(STATUS "VneTemplate: DEV build -> BUILD_TESTS=ON, VNE_TEMPLATE_TESTS=ON, BUILD_EXAMPLES=ON")
 endif()
 
 #==============================================================================
@@ -210,6 +213,13 @@ add_subdirectory(src)
 if(BUILD_TESTS AND VNE_TEMPLATE_TESTS)
     enable_testing()
     add_subdirectory(tests)
+endif()
+
+#==============================================================================
+# Examples
+#==============================================================================
+if(BUILD_EXAMPLES)
+    add_subdirectory(examples)
 endif()
 
 #==============================================================================
