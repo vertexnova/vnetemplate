@@ -132,7 +132,9 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for build, test, and style. We follow the
 
 ## Releases
 
-Releases are managed by [release-please](https://github.com/googleapis/release-please). The **VERSION** file at the repo root is the single source of truth; CMake reads it at configuration time (via `file(READ)` in CMakeLists.txt) and uses that value for the project version, which is exposed in code as `get_version()`. Do not hand-edit CHANGELOG.md for versioned entries—use Conventional Commits (e.g. `feat:`, `fix:`) so the release PR updates CHANGELOG and VERSION and creates the tag. See [CONTRIBUTING.md](CONTRIBUTING.md).
+Releases are managed by [release-please](https://github.com/googleapis/release-please). The **VERSION** file at the repo root is the single source of truth; CMake reads it at configuration time (via `file(READ)` in CMakeLists.txt) and uses that value for the project version, which is exposed in code as `get_version()`. Do not hand-edit CHANGELOG.md for versioned entries—use **Conventional Commits** (e.g. `feat: add X`, `fix: Y`, or `feat(vertexnova): add X`) so the release PR updates CHANGELOG and VERSION and creates the tag. See [CONTRIBUTING.md](CONTRIBUTING.md).
+
+**First release:** If release-please reports "No latest release pull request found" and "commits: 0", the existing history has no conventional commits. Add one commit with a conventional message (e.g. `chore: prepare initial release` or `chore(vertexnova): prepare initial release`) and push to `main`; the next release-please run will then open the first release PR.
 
 ## License
 
