@@ -9,13 +9,14 @@
 # Author:    Ajeet Singh Yadav
 # Created:   February 2026
 #
-# Minimal: configure, build, test. Optional -xcode for Xcode project.
+# Autodoc:   yes
+#
+# This script builds VneTemplate for macOS with Xcode integration
 #==============================================================================
 
 set -e
 
 JOBS=10
-ARGS=()
 while [[ $# -gt 0 ]]; do
     case $1 in
         -j|--jobs) [[ -n "$2" && "$2" =~ ^[0-9]+$ ]] && { JOBS="$2"; shift 2; } || { echo "Invalid jobs: $2"; exit 1; } ;;
@@ -25,50 +26,62 @@ while [[ $# -gt 0 ]]; do
 done
 set -- "${ARGS[@]}"
 
+PLATFORM="Darwin"
+COMPILER="clang"
+
 usage() {
-  echo "Usage: $0 [-t <build_type>] [-a <action>] [-clean] [-j <jobs>] [-xcode]"
+  echo "Usage: $0 [-t <build_type>] [-a <action>] [-clean] [-interactive] [-j <jobs>] [-xcode] [-xcode-only]"
   echo "  -t <build_type>  Debug|Release|RelWithDebInfo|MinSizeRel"
-  echo "  -a <action>      configure|build|configure_and_build|test"
+  echo "  -a <action>      configure|build|configure_and_build|test|xcode|xcode_build"
   echo "  -clean           Clean build directory first"
+  echo "  -interactive     Interactive mode"
   echo "  -j <jobs>        Parallel jobs (default: 10)"
-  echo "  -xcode           Generate Xcode project instead of Makefiles"
+  echo "  -xcode           Also generate Xcode project"
+  echo "  -xcode-only      Only generate Xcode project"
   exit 1
 }
 
 BUILD_TYPE="Debug"
 ACTION="configure_and_build"
 CLEAN_BUILD=false
+INTERACTIVE_MODE=false
 GENERATE_XCODE=false
+XCODE_ONLY=false
 
 while [[ $# -gt 0 ]]; do
   case $1 in
     -t|--build-type) BUILD_TYPE="$2"; shift 2 ;;
     -a|--action) ACTION="$2"; shift 2 ;;
     -clean|--clean) CLEAN_BUILD=true; shift ;;
+    -interactive|--interactive) INTERACTIVE_MODE=true; shift ;;
     -xcode|--xcode) GENERATE_XCODE=true; shift ;;
-    -j|--jobs) JOBS="$2"; shift 2 ;;
+    -xcode-only|--xcode-only) XCODE_ONLY=true; GENERATE_XCODE=true; shift ;;
     -h|--help) usage ;;
     *) echo "Unknown option: $1"; usage ;;
   esac
 done
 
-COMPILER_VERSION=$(clang --version 2>/dev/null | head -n 1 | awk '{print $4}' | sed 's/(.*)//' || true)
-[[ -z "$COMPILER_VERSION" || "$COMPILER_VERSION" = "version" ]] && COMPILER_VERSION=$(clang --version 2>/dev/null | head -n 1 | awk '{print $3}' || echo "unknown")
+[ "$XCODE_ONLY" = true ] && ACTION="xcode"
+[ "$GENERATE_XCODE" = true ] && [ "$ACTION" = "configure_and_build" ] && ACTION="xcode_build"
+[ "$ACTION" = "xcode" ] || [ "$ACTION" = "xcode_build" ] && GENERATE_XCODE=true
 
-echo "macOS :: clang-${COMPILER_VERSION}"
+COMPILER_VERSION=$(clang --version | head -n 1 | awk '{print $4}' | sed 's/(.*)//')
+[ "$COMPILER_VERSION" = "version" ] && COMPILER_VERSION=$(clang --version | head -n 1 | awk '{print $3}')
+
+echo "$PLATFORM :: $COMPILER-${COMPILER_VERSION}"
 PROJECT_ROOT=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)
 
 if [ "$GENERATE_XCODE" = true ]; then
-  BUILD_DIR="$PROJECT_ROOT/build/${BUILD_TYPE}/xcode-macos-clang-${COMPILER_VERSION}"
-  CONFIGURE_CMD="cmake -G Xcode -DCMAKE_BUILD_TYPE=$BUILD_TYPE -DCMAKE_C_COMPILER=clang -DCMAKE_CXX_COMPILER=clang++ -DCMAKE_OSX_DEPLOYMENT_TARGET=10.15 -DBUILD_TESTS=ON $PROJECT_ROOT"
-  BUILD_CMD="xcodebuild -project vnetemplate.xcodeproj -configuration $BUILD_TYPE -parallelizeTargets -jobs $JOBS"
-  TEST_CMD="xcodebuild -project vnetemplate.xcodeproj -configuration $BUILD_TYPE -target RUN_TESTS"
+  BUILD_DIR="$PROJECT_ROOT/build/${BUILD_TYPE}/xcode-macos-$COMPILER-${COMPILER_VERSION}"
 else
-  BUILD_DIR="$PROJECT_ROOT/build/${BUILD_TYPE}/build-macos-clang-${COMPILER_VERSION}"
-  CONFIGURE_CMD="cmake -DCMAKE_BUILD_TYPE=$BUILD_TYPE -DCMAKE_C_COMPILER=clang -DCMAKE_CXX_COMPILER=clang++ -DCMAKE_OSX_DEPLOYMENT_TARGET=10.15 -DBUILD_TESTS=ON $PROJECT_ROOT"
-  BUILD_CMD="make -j$JOBS"
-  TEST_CMD="ctest --output-on-failure"
+  BUILD_DIR="$PROJECT_ROOT/build/${BUILD_TYPE}/build-macos-$COMPILER-${COMPILER_VERSION}"
 fi
+
+[ "$GENERATE_XCODE" = true ] && CONFIGURE_CMD="cmake -G Xcode -DCMAKE_BUILD_TYPE=$BUILD_TYPE -DCMAKE_C_COMPILER=clang -DCMAKE_CXX_COMPILER=clang++ -DCMAKE_OSX_DEPLOYMENT_TARGET=10.15 -DBUILD_TESTS=ON $PROJECT_ROOT" \
+  || CONFIGURE_CMD="cmake -DCMAKE_BUILD_TYPE=$BUILD_TYPE -DCMAKE_C_COMPILER=clang -DCMAKE_CXX_COMPILER=clang++ -DCMAKE_OSX_DEPLOYMENT_TARGET=10.15 -DBUILD_TESTS=ON $PROJECT_ROOT"
+
+[ "$GENERATE_XCODE" = true ] && BUILD_CMD="xcodebuild -project VneTemplate.xcodeproj -configuration $BUILD_TYPE -parallelizeTargets -jobs $JOBS" && TEST_CMD="xcodebuild -project VneTemplate.xcodeproj -configuration $BUILD_TYPE -target RUN_TESTS" \
+  || BUILD_CMD="make -j$JOBS" && TEST_CMD="ctest --output-on-failure"
 
 clean_build() { rm -rf "$BUILD_DIR"; mkdir -p "$BUILD_DIR"; cd "$BUILD_DIR" || exit; }
 ensure_build_dir() { [ ! -d "$BUILD_DIR" ] && mkdir -p "$BUILD_DIR"; cd "$BUILD_DIR" || exit; }
@@ -78,6 +91,8 @@ case $ACTION in
   build) [ "$CLEAN_BUILD" = true ] && clean_build || ensure_build_dir; eval $CONFIGURE_CMD; eval $BUILD_CMD ;;
   configure_and_build) [ "$CLEAN_BUILD" = true ] && clean_build || ensure_build_dir; eval $CONFIGURE_CMD; eval $BUILD_CMD ;;
   test) [ "$CLEAN_BUILD" = true ] && clean_build || ensure_build_dir; eval $CONFIGURE_CMD; eval $BUILD_CMD; eval $TEST_CMD ;;
+  xcode) [ "$CLEAN_BUILD" = true ] && clean_build || ensure_build_dir; eval $CONFIGURE_CMD; echo "Xcode project: $BUILD_DIR (VneTemplate.xcodeproj)" ;;
+  xcode_build) [ "$CLEAN_BUILD" = true ] && clean_build || ensure_build_dir; eval $CONFIGURE_CMD; eval $BUILD_CMD; echo "Xcode build done: $BUILD_DIR" ;;
   *) usage ;;
 esac
 

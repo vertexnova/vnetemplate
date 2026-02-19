@@ -12,46 +12,26 @@ name: CI
 
 on:
   push:
-    branches: ["main"]
+    branches: [ "main" ]
   pull_request:
-    branches: ["main"]
+    branches: [ "main" ]
 
 jobs:
-  format:
+  clang-format:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+    - uses: actions/checkout@v4
+      with:
+        submodules: recursive
 
-      - name: Install clang-format
-        run: sudo apt-get update && sudo apt-get install -y clang-format
+    - name: Install clang-format
+      run: sudo apt-get update && sudo apt-get install -y clang-format
 
-      - name: Check formatting
-        run: bash scripts/format.sh -check
-
-  clang-tidy:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          submodules: true
-
-      - name: Install deps
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y build-essential cmake clang clang-tidy
-
-      - name: Configure CMake
-        run: cmake -B build -S . -DCMAKE_BUILD_TYPE=Debug -DCMAKE_C_COMPILER=clang -DCMAKE_CXX_COMPILER=clang++ -DVNE_TEMPLATE_CI=ON -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
-
-      - name: Run clang-tidy
-        run: |
-          if command -v run-clang-tidy &>/dev/null; then
-            run-clang-tidy -p build -header-filter='.*' -quiet
-          else
-            for f in $(find src include tests -name '*.cpp' -o -name '*.h' -o -name '*.hpp' 2>/dev/null); do
-              clang-tidy "$f" -p build --header-filter='.*' 2>/dev/null || true
-            done
-          fi
+    - name: Check formatting (uses project .clang-format)
+      run: |
+        find src include examples tests -type f \( -name '*.h' -o -name '*.cpp' -o -name '*.hpp' -o -name '*.c' \) \
+          | xargs clang-format -i --style=file --fallback-style=Google
+        git diff --exit-code
 
   linux:
     runs-on: ubuntu-latest
@@ -68,68 +48,207 @@ jobs:
             cpp_compiler: clang++
 
     steps:
-      - uses: actions/checkout@v4
-        with:
-          submodules: true
+    - uses: actions/checkout@v4
+      with:
+        submodules: true  # Only direct submodules, not recursive (avoids nested deps conflict)
 
-      - name: Install dependencies
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y build-essential cmake
+    - name: Use HTTPS for GitHub (no SSH keys on runner)
+      run: git config --global url."https://github.com/".insteadOf "git@github.com:"
 
-      - name: Configure CMake
-        run: |
-          cmake -B build -S . \
-            -DCMAKE_BUILD_TYPE=Release \
-            -DCMAKE_C_COMPILER=${{ matrix.c_compiler }} \
-            -DCMAKE_CXX_COMPILER=${{ matrix.cpp_compiler }} \
-            -DVNE_TEMPLATE_CI=ON
+    - name: Init vnemath submodules (HTTPS for CI)
+      run: |
+        if [ -d deps/internal/vnemath/.git ]; then
+          cd deps/internal/vnemath
+          git config submodule.cmake/vnecmake.url https://github.com/vertexnova/vnecmake.git
+          git config submodule.deps/internal/vnecommon.url https://github.com/vertexnova/vnecommon.git
+          git config submodule.deps/internal/vnelogging.url https://github.com/vertexnova/vnelogging.git
+          git submodule update --init --recursive
+        fi
 
-      - name: Build
-        run: cmake --build build --config Release --parallel
+    - name: Install dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y build-essential cmake
 
-      - name: Test
-        working-directory: build
-        run: ctest --output-on-failure
+    - name: Configure CMake
+      run: |
+        cmake -B build -S . \
+          -DCMAKE_BUILD_TYPE=Release \
+          -DCMAKE_C_COMPILER=${{ matrix.c_compiler }} \
+          -DCMAKE_CXX_COMPILER=${{ matrix.cpp_compiler }} \
+          -DVNE_SCENE_CI=ON
+
+    - name: Build
+      run: cmake --build build --config Release --parallel
+
+    - name: Test
+      working-directory: build
+      run: ctest --output-on-failure
+
+  coverage:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+      with:
+        submodules: true  # Only direct submodules, not recursive (avoids nested deps conflict)
+
+    - name: Use HTTPS for GitHub (no SSH keys on runner)
+      run: git config --global url."https://github.com/".insteadOf "git@github.com:"
+
+    - name: Init vnemath submodules (HTTPS for CI)
+      run: |
+        if [ -d deps/internal/vnemath/.git ]; then
+          cd deps/internal/vnemath
+          git config submodule.cmake/vnecmake.url https://github.com/vertexnova/vnecmake.git
+          git config submodule.deps/internal/vnecommon.url https://github.com/vertexnova/vnecommon.git
+          git config submodule.deps/internal/vnelogging.url https://github.com/vertexnova/vnelogging.git
+          git submodule update --init --recursive
+        fi
+
+    - name: Install dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y build-essential cmake lcov
+
+    - name: Configure CMake with Coverage
+      run: |
+        cmake -B build -S . \
+          -DCMAKE_BUILD_TYPE=Debug \
+          -DCMAKE_C_COMPILER=gcc \
+          -DCMAKE_CXX_COMPILER=g++ \
+          -DVNE_SCENE_CI=ON \
+          -DENABLE_COVERAGE=ON
+
+    - name: Build
+      run: cmake --build build --config Debug --parallel
+
+    - name: Test
+      working-directory: build
+      run: ctest --output-on-failure
+
+    - name: Generate Coverage Report
+      run: |
+        cd build
+        lcov --capture --directory . --output-file coverage.info --ignore-errors mismatch,unused,empty
+        lcov --remove coverage.info '/usr/*' '*/tests/*' '*/deps/*' '*/_deps/*' '*/googletest/*' '*/googlemock/*' --output-file coverage.info --ignore-errors mismatch,unused,empty
+        lcov --list coverage.info --ignore-errors mismatch,unused,empty
+        cp coverage.info ..
+        cd ..
+
+    - name: Upload coverage reports to Codecov
+      uses: codecov/codecov-action@v5
+      with:
+        token: ${{ secrets.CODECOV_TOKEN }}
+        files: ./coverage.info
+        fail_ci_if_error: false
+        verbose: true
 
   macos:
     runs-on: macos-latest
 
     steps:
-      - uses: actions/checkout@v4
-        with:
-          submodules: true
+    - uses: actions/checkout@v4
+      with:
+        submodules: true  # Only direct submodules, not recursive (avoids nested deps conflict)
 
-      - name: Configure CMake
-        run: |
-          cmake -B build -S . \
-            -DCMAKE_BUILD_TYPE=Release \
-            -DVNE_TEMPLATE_CI=ON
+    - name: Use HTTPS for GitHub (no SSH keys on runner)
+      run: git config --global url."https://github.com/".insteadOf "git@github.com:"
 
-      - name: Build
-        run: cmake --build build --config Release --parallel
+    - name: Init vnemath submodules (HTTPS for CI)
+      run: |
+        if [ -d deps/internal/vnemath/.git ]; then
+          cd deps/internal/vnemath
+          git config submodule.cmake/vnecmake.url https://github.com/vertexnova/vnecmake.git
+          git config submodule.deps/internal/vnecommon.url https://github.com/vertexnova/vnecommon.git
+          git config submodule.deps/internal/vnelogging.url https://github.com/vertexnova/vnelogging.git
+          git submodule update --init --recursive
+        fi
 
-      - name: Test
-        working-directory: build
-        run: ctest --output-on-failure
+    - name: Configure CMake
+      run: |
+        cmake -B build -S . \
+          -DCMAKE_BUILD_TYPE=Release \
+          -DVNE_SCENE_CI=ON
+
+    - name: Build
+      run: cmake --build build --config Release --parallel
+
+    - name: Test
+      working-directory: build
+      run: ctest --output-on-failure
 
   windows:
     runs-on: windows-latest
 
     steps:
-      - uses: actions/checkout@v4
-        with:
-          submodules: true
+    - uses: actions/checkout@v4
+      with:
+        submodules: true  # Only direct submodules, not recursive (avoids nested deps conflict)
 
-      - name: Configure CMake
-        run: |
-          cmake -B build -S . `
-            -DCMAKE_BUILD_TYPE=Release `
-            -DVNE_TEMPLATE_CI=ON
+    - name: Use HTTPS for GitHub (no SSH keys on runner)
+      run: git config --global url."https://github.com/".insteadOf "git@github.com:"
 
-      - name: Build
-        run: cmake --build build --config Release --parallel
+    - name: Init vnemath submodules (HTTPS for CI)
+      run: |
+        if (Test-Path deps/internal/vnemath/.git) {
+          Push-Location deps/internal/vnemath
+          git config submodule.cmake/vnecmake.url https://github.com/vertexnova/vnecmake.git
+          git config submodule.deps/internal/vnecommon.url https://github.com/vertexnova/vnecommon.git
+          git config submodule.deps/internal/vnelogging.url https://github.com/vertexnova/vnelogging.git
+          git submodule update --init --recursive
+          Pop-Location
+        }
 
-      - name: Test
-        working-directory: build
-        run: ctest --output-on-failure -C Release
+    - name: Configure CMake
+      run: |
+        cmake -B build -S . `
+          -DCMAKE_BUILD_TYPE=Release `
+          -DVNE_SCENE_CI=ON
+
+    - name: Build
+      run: cmake --build build --config Release --parallel
+
+    - name: Test
+      working-directory: build
+      run: ctest --output-on-failure -C Release
+
+  clang-tidy:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+      with:
+        submodules: true  # Only direct submodules, not recursive (avoids nested deps conflict)
+
+    - name: Use HTTPS for GitHub (no SSH keys on runner)
+      run: git config --global url."https://github.com/".insteadOf "git@github.com:"
+
+    - name: Init vnemath submodules (HTTPS for CI)
+      run: |
+        if [ -d deps/internal/vnemath/.git ]; then
+          cd deps/internal/vnemath
+          git config submodule.cmake/vnecmake.url https://github.com/vertexnova/vnecmake.git
+          git config submodule.deps/internal/vnecommon.url https://github.com/vertexnova/vnecommon.git
+          git config submodule.deps/internal/vnelogging.url https://github.com/vertexnova/vnelogging.git
+          git submodule update --init --recursive
+        fi
+
+    - name: Install dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y build-essential cmake clang clang-tidy
+
+    - name: Configure CMake
+      run: |
+        cmake -B build -S . \
+          -DCMAKE_BUILD_TYPE=Release \
+          -DCMAKE_C_COMPILER=clang \
+          -DCMAKE_CXX_COMPILER=clang++ \
+          -DVNE_SCENE_CI=ON
+
+    - name: Build
+      run: cmake --build build --config Release --parallel
+
+    - name: Run clang-tidy (project .clang-tidy)
+      run: |
+        find src -type f \( -name '*.cpp' -o -name '*.h' \) -print0 \
+          | xargs -0 -r clang-tidy -p build
