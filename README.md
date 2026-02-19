@@ -40,7 +40,7 @@ git submodule update --init --recursive
 From the project root:
 
 ```bash
-cmake -B build -DCMAKE_BUILD_TYPE=Debug -DBUILD_TESTS=ON
+cmake -B build -DCMAKE_BUILD_TYPE=Debug -DVNE_TEMPLATE_TESTS=ON
 cmake --build build
 ```
 
