@@ -78,8 +78,6 @@ Or use the platform scripts:
 
 Options: `-t` build type, `-a` action (`configure` | `build` | `configure_and_build` | `test`), `-clean`, `-j N`. macOS also supports `-xcode` for Xcode project.
 
-**CMake Presets:** For a repeatable configuration, use `CMakePresets.json`: `cmake --preset=default` then `cmake --build --preset=default`. Presets: `default` (Debug, dev), `dev`, `ci` (Release, warnings-as-errors).
-
 ## Test
 
 ```bash

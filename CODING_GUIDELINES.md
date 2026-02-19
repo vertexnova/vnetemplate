@@ -485,7 +485,7 @@ Order includes in groups, separated by blank lines:
 ```cpp
 #pragma once
 /* ---------------------------------------------------------------------
- * Copyright (c) 2025 Ajeet Singh Yadav. All rights reserved.
+ * Copyright (c) 2026 Ajeet Singh Yadav. All rights reserved.
  * Licensed under the Apache License, Version 2.0 (the "License")
  *
  * Author:    Ajeet Singh Yadav

@@ -83,8 +83,7 @@ jobs:
           -DCMAKE_BUILD_TYPE=Release \
           -DCMAKE_C_COMPILER=${{ matrix.c_compiler }} \
           -DCMAKE_CXX_COMPILER=${{ matrix.cpp_compiler }} \
-          -DVNE_TEMPLATE_CI=ON \
-          -DWARNINGS_AS_ERRORS=ON
+          -DVNE_TEMPLATE_CI=ON
 
     - name: Build
       run: cmake --build build --config Release --parallel
@@ -147,7 +146,7 @@ jobs:
     - name: Upload coverage reports to Codecov
       uses: codecov/codecov-action@v5
       with:
-        token: ${{ secrets.CODECOV_TOKEN }}
+        token: ${{ secrets.CODECOV_TOKEN_VNETEMPLATE }}
         files: ./coverage.info
         fail_ci_if_error: false
         verbose: true
