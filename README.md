@@ -60,6 +60,8 @@ Or use the platform scripts:
 
 Options: `-t` build type, `-a` action (`configure` | `build` | `configure_and_build` | `test`), `-clean`, `-j N`. macOS also supports `-xcode` for Xcode project.
 
+**CMake Presets:** For a repeatable configuration, use `CMakePresets.json`: `cmake --preset=default` then `cmake --build --preset=default`. Presets: `default` (Debug, dev), `dev`, `ci` (Release, warnings-as-errors).
+
 ## Test
 
 ```bash
@@ -103,6 +105,10 @@ Or:
 ## CI
 
 GitHub Actions runs on push and pull requests to `main`: format check, clang-tidy, and build/test on Linux (GCC, Clang), macOS, and Windows. See [.github/workflows/ci.yml](.github/workflows/ci.yml).
+
+## Contributing
+
+See [CONTRIBUTING.md](CONTRIBUTING.md) for build, test, and style. We follow the [Contributor Covenant](CODE_OF_CONDUCT.md) Code of Conduct.
 
 ## License
 
