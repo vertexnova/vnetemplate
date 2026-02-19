@@ -1,6 +1,6 @@
-# Copilot PR Review Instructions (Repo-wide)
+# Copilot PR Review Instructions
 
-When reviewing pull requests in this repository, optimize for: correctness, safety, performance, maintainability, and testability.
+Use this for every PR review in this repository: optimize for correctness, safety, maintainability, testability, and project conventions.
 
 ## Review output format
 
@@ -51,47 +51,72 @@ When reviewing pull requests in this repository, optimize for: correctness, safe
 - Flag unsafe parsing, unchecked inputs, path traversal, command injection patterns, and deserialization risks.
 - Watch for integer overflow, buffer overrun, format-string issues, and risky `memcpy`/casts.
 
-## Build system & portability
+### Build system & portability
 
 - Ensure changes compile on all supported compilers/OS (don't rely on non-standard extensions).
 - Prefer standard C++ features and consistent warning levels.
 - Avoid introducing platform-specific behavior without guards and tests.
 
-## Documentation and readability
+### Documentation and readability
 
 - Names should reveal intent; avoid abbreviations that hide meaning.
 - Keep functions small; suggest refactors when complexity grows.
 - Ensure public APIs have brief doc comments if behavior isn't obvious.
 
-## CI expectations
+### CI expectations
 
 - If the PR changes behavior, expect: tests updated/added.
 - If the PR changes public API or core behavior, request a short PR description update with rationale and migration notes.
 
----
+## Naming and style (compact)
+
+Enforce the following; full rules and examples: [CODING_GUIDELINES.md](CODING_GUIDELINES.md) and [.copilot/coding-guidelines.md](.copilot/coding-guidelines.md). Flag violations by citing the guideline and suggesting a concrete fix.
+
+| Construct | Style | Example |
+|-----------|-------|---------|
+| Classes/Structs | PascalCase | `Buffer`, `ShaderCompiler` |
+| Interface classes | `I` + PascalCase | `IRenderer`, `IBuffer` |
+| Enums | PascalCase | `LogSink`, `ShaderStage` |
+| Enum values | `e` + PascalCase + explicit value | `eNone = 0`, `eConsole = 1` |
+| Functions/Methods | camelCase | `initialize()`, `createBuffer()` |
+| Constants | `k` + PascalCase | `kMaxBufferSize` |
+| Private/Protected members | snake_case + `_` | `buffer_size_`, `is_initialized_` |
+| Macros | ALL_CAPS with VNE_ prefix | `VNE_ASSERT`, `VNE_PLATFORM_WINDOWS` |
+| Namespaces | lowercase | `vne`, `xgl`, `xwin` |
+| File names | snake_case | `shader_compiler.h` |
+| Header guards | `#pragma once` | `#pragma once` |
+
+## When reviewing test files
+
+Apply this section when the PR changes files under `tests/` or `*_test.cpp`.
+
+- New features/bug fixes should include tests unless clearly justified.
+- Tests must be deterministic (no timeouts/flaky sleeps).
+- Prefer clear Arrange-Act-Assert structure.
+- If mocking: keep mocks minimal and verify behavior, not implementation details.
+- Ensure tests run fast and don't require special hardware unless explicitly marked.
 
 ## This repository (VneTemplate)
-
-### Coding standards
-
-- Enforce **CODING_GUIDELINES.md** (repository root) and **.copilot/coding-guidelines.md** (naming summary).
-- Naming: PascalCase types; camelCase functions/methods; snake_case + trailing `_` for private members; `e` for enum values; `k` for constants; `I` prefix for interface classes.
-
-### Formatting and static analysis
-
-- **.clang-format** and **.clang-tidy** are enforced in separate CI actions; focus review on design and logic. If you spot style/naming that automation might miss, flag it.
 
 ### Project layout
 
 - Library: **src/vertexnova/template/** — Public API: **include/vertexnova/template/** — Tests: **tests/** — Examples: **examples/**
 - Dependencies: **deps/internal/** (e.g. vnecommon, vnelogging), **deps/external/** (e.g. googletest). No top-level `external/` or `libs/`.
 
-### Build and test
+### Formatting and static analysis
 
-- Build, tests, clang-format, and clang-tidy run in separate CI actions. Focus review on correctness, API design, and test quality rather than re-checking what CI already covers.
+- **.clang-format** and **.clang-tidy** are enforced in separate CI actions; focus review on design and logic. Flag style/naming if automation might miss it.
 
-### Extra review focus here
+### Extra review focus
 
-- Unnecessary edits under **deps/internal/** or **deps/external/** unless the PR intentionally updates or configures submodules/dependencies.
+- Flag unnecessary edits under **deps/internal/** or **deps/external/** unless the PR intentionally updates or configures submodules/dependencies.
 
 Keep comments concrete: cite the guideline or rule and suggest a specific fix when possible.
+
+## Checklist
+
+- [ ] Summary (1–3 bullets) and issues grouped by BLOCKER / MAJOR / MINOR with file, reason, and fix.
+- [ ] C++ focus areas considered (correctness, memory, perf, concurrency, errors, security, build, docs, CI).
+- [ ] Naming/style and test rules (if PR touches tests) applied; violations cited with suggested fix.
+- [ ] Repo layout and deps respected; no unnecessary deps edits.
+- [ ] Concrete fixes suggested for each issue where applicable.
