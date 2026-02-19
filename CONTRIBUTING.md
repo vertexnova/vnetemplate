@@ -4,7 +4,7 @@ Thank you for your interest in contributing. This document explains how to build
 
 ## Building
 
-- **Prerequisites:** CMake 3.16+, C++20 compiler. See [README.md](README.md#prerequisites).
+- **Prerequisites:** CMake 3.19+, C++20 compiler. See [README.md](README.md#prerequisites).
 - **Dependencies:** Initialize submodules from the project root:
   ```bash
   git submodule update --init --recursive

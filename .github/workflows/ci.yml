@@ -56,7 +56,7 @@ jobs:
       uses: actions/cache@v4
       with:
         path: build
-        key: linux-${{ matrix.compiler }}-${{ hashFiles('CMakeLists.txt', '**/CMakeLists.txt', '.github/workflows/ci.yml') }}
+        key: linux-${{ matrix.compiler }}-${{ hashFiles('CMakeLists.txt', '**/CMakeLists.txt') }}
         restore-keys: linux-${{ matrix.compiler }}-
 
     - name: Use HTTPS for GitHub (no SSH keys on runner)
@@ -164,7 +164,7 @@ jobs:
       uses: actions/cache@v4
       with:
         path: build
-        key: macos-${{ hashFiles('CMakeLists.txt', '**/CMakeLists.txt', '.github/workflows/ci.yml') }}
+        key: macos-${{ hashFiles('CMakeLists.txt', '**/CMakeLists.txt') }}
         restore-keys: macos-
 
     - name: Use HTTPS for GitHub (no SSH keys on runner)
@@ -206,7 +206,7 @@ jobs:
       uses: actions/cache@v4
       with:
         path: build
-        key: windows-${{ hashFiles('CMakeLists.txt', '**/CMakeLists.txt', '.github/workflows/ci.yml') }}
+        key: windows-${{ hashFiles('CMakeLists.txt', '**/CMakeLists.txt') }}
         restore-keys: windows-
 
     - name: Use HTTPS for GitHub (no SSH keys on runner)

@@ -18,7 +18,7 @@ Minimal VertexNova-standard C++ template: CMake, deps (external + internal), tes
 
 ## Prerequisites
 
-- **CMake** 3.16 or newer  
+- **CMake** 3.19 or newer  
 - **C++20** compiler (e.g. GCC 10+, Clang 10+, MSVC 2019+)  
 - **Doxygen** (optional, for `scripts/generate-docs.sh` and `-DENABLE_DOXYGEN=ON`)
 
@@ -112,7 +112,7 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for build, test, and style. We follow the
 
 ## Releases
 
-Releases are managed by [release-please](https://github.com/googleapis/release-please). The **VERSION** file at the repo root is the single source of truth; CMake reads it for `get_version()`. Do not hand-edit CHANGELOG.md for versioned entries—use Conventional Commits (e.g. `feat:`, `fix:`) so the release PR updates CHANGELOG and VERSION and creates the tag. See [CONTRIBUTING.md](CONTRIBUTING.md).
+Releases are managed by [release-please](https://github.com/googleapis/release-please). The **VERSION** file at the repo root is the single source of truth; CMake reads it at configuration time (via `file(READ)` in CMakeLists.txt) and uses that value for the project version, which is exposed in code as `get_version()`. Do not hand-edit CHANGELOG.md for versioned entries—use Conventional Commits (e.g. `feat:`, `fix:`) so the release PR updates CHANGELOG and VERSION and creates the tag. See [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ## License
 

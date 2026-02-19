@@ -70,7 +70,7 @@ Use this for every PR review in this repository: optimize for correctness, safet
 
 ## Naming and style (compact)
 
-Enforce the following; full rules and examples: [CODING_GUIDELINES.md](CODING_GUIDELINES.md) and [.copilot/coding-guidelines.md](.copilot/coding-guidelines.md). Flag violations by citing the guideline and suggesting a concrete fix.
+Enforce the following; full rules and examples: [CODING_GUIDELINES.md](../CODING_GUIDELINES.md). Flag violations by citing the guideline and suggesting a concrete fix.
 
 | Construct | Style | Example |
 |-----------|-------|---------|
