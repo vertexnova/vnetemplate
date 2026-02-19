@@ -38,7 +38,7 @@ if (-not $Generator) {
 }
 
 $BuildDir = Join-Path $ProjectRoot "build\$BuildType\build-windows-msvc"
-$ConfigureCmd = "cmake -B `"$BuildDir`" -S `"$ProjectRoot`" -DCMAKE_BUILD_TYPE=$BuildType -DBUILD_TESTS=ON $Generator"
+$ConfigureCmd = "cmake -B `"$BuildDir`" -S `"$ProjectRoot`" -DCMAKE_BUILD_TYPE=$BuildType -DVNE_TEMPLATE_TESTS=ON $Generator"
 $BuildCmd = "cmake --build `"$BuildDir`" --config $BuildType --parallel $Jobs"
 $TestCmd = "ctest --test-dir `"$BuildDir`" --output-on-failure -C $BuildType"
 

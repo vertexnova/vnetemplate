@@ -144,21 +144,18 @@ if(VNE_TEMPLATE_CI)
     set(VNE_TEMPLATE_DEV OFF CACHE BOOL "" FORCE)
 endif()
 
-option(BUILD_TESTS "Build the test suite" ON)
 option(VNE_TEMPLATE_TESTS "Build vnetemplate test suite (turn OFF when used as submodule)" ON)
-option(BUILD_EXAMPLES "Build example programs" OFF)
+option(VNE_TEMPLATE_EXAMPLES "Build vnetemplate example programs (turn OFF when used as submodule)" OFF)
 option(ENABLE_DOXYGEN "Enable Doxygen documentation builds" OFF)
 
 if(VNE_TEMPLATE_CI)
-    set(BUILD_TESTS ON CACHE BOOL "" FORCE)
     set(VNE_TEMPLATE_TESTS ON CACHE BOOL "" FORCE)
-    set(BUILD_EXAMPLES OFF CACHE BOOL "" FORCE)
-    message(STATUS "VneTemplate: CI build -> BUILD_TESTS=ON, VNE_TEMPLATE_TESTS=ON, BUILD_EXAMPLES=OFF")
+    set(VNE_TEMPLATE_EXAMPLES OFF CACHE BOOL "" FORCE)
+    message(STATUS "VneTemplate: CI build -> VNE_TEMPLATE_TESTS=ON, VNE_TEMPLATE_EXAMPLES=OFF")
 elseif(VNE_TEMPLATE_DEV)
-    set(BUILD_TESTS ON CACHE BOOL "" FORCE)
     set(VNE_TEMPLATE_TESTS ON CACHE BOOL "" FORCE)
-    set(BUILD_EXAMPLES ON CACHE BOOL "" FORCE)
-    message(STATUS "VneTemplate: DEV build -> BUILD_TESTS=ON, VNE_TEMPLATE_TESTS=ON, BUILD_EXAMPLES=ON")
+    set(VNE_TEMPLATE_EXAMPLES ON CACHE BOOL "" FORCE)
+    message(STATUS "VneTemplate: DEV build -> VNE_TEMPLATE_TESTS=ON, VNE_TEMPLATE_EXAMPLES=ON")
 endif()
 
 #==============================================================================
@@ -210,7 +207,7 @@ add_subdirectory(src)
 #==============================================================================
 # Tests
 #==============================================================================
-if(BUILD_TESTS AND VNE_TEMPLATE_TESTS)
+if(VNE_TEMPLATE_TESTS)
     enable_testing()
     add_subdirectory(tests)
 endif()
@@ -218,7 +215,7 @@ endif()
 #==============================================================================
 # Examples
 #==============================================================================
-if(BUILD_EXAMPLES)
+if(VNE_TEMPLATE_EXAMPLES)
     add_subdirectory(examples)
 endif()
 

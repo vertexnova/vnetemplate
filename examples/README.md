@@ -7,7 +7,7 @@ This directory contains examples demonstrating the VneTemplate API.
 From the project root:
 
 ```bash
-cmake -B build -DBUILD_EXAMPLES=ON
+cmake -B build -DVNE_TEMPLATE_EXAMPLES=ON
 cmake --build build
 ```
 
