@@ -1,5 +1,8 @@
 # Delete the source branch when a pull request is merged.
 # Skips deletion for the default branch (main) and for forks (no write access).
+#
+# If your org disables "Read and write permissions" for GITHUB_TOKEN, add a
+# PAT (repo scope) as repository secret REPO_ACCESS_TOKEN; this job will use it.
 
 name: Delete branch on merge
 
@@ -28,7 +31,5 @@ jobs:
           REF_ENC=$(echo "$REF" | sed 's/\//%2F/g')
           curl -sSf -X DELETE \
             -H "Accept: application/vnd.github+json" \
-            -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" \
+            -H "Authorization: Bearer ${{ secrets.REPO_ACCESS_TOKEN || secrets.GITHUB_TOKEN }}" \
             "https://api.github.com/repos/${{ github.repository }}/git/refs/${REF_ENC}"
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
