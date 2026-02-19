@@ -97,20 +97,7 @@ jobs:
     steps:
     - uses: actions/checkout@v4
       with:
-        submodules: true  # Only direct submodules, not recursive (avoids nested deps conflict)
-
-    - name: Use HTTPS for GitHub (no SSH keys on runner)
-      run: git config --global url."https://github.com/".insteadOf "git@github.com:"
-
-    - name: Init vnemath submodules (HTTPS for CI)
-      run: |
-        if [ -d deps/internal/vnemath/.git ]; then
-          cd deps/internal/vnemath
-          git config submodule.cmake/vnecmake.url https://github.com/vertexnova/vnecmake.git
-          git config submodule.deps/internal/vnecommon.url https://github.com/vertexnova/vnecommon.git
-          git config submodule.deps/internal/vnelogging.url https://github.com/vertexnova/vnelogging.git
-          git submodule update --init --recursive
-        fi
+        submodules: recursive
 
     - name: Install dependencies
       run: |
@@ -136,12 +123,17 @@ jobs:
 
     - name: Generate Coverage Report
       run: |
-        cd build
-        lcov --capture --directory . --output-file coverage.info --ignore-errors mismatch,unused,empty
-        lcov --remove coverage.info '/usr/*' '*/tests/*' '*/deps/*' '*/_deps/*' '*/googletest/*' '*/googlemock/*' --output-file coverage.info --ignore-errors mismatch,unused,empty
-        lcov --list coverage.info --ignore-errors mismatch,unused,empty
-        cp coverage.info ..
-        cd ..
+        lcov --capture --directory build --output-file coverage.info --ignore-errors mismatch,unused
+        lcov --remove coverage.info \
+          '/usr/*' \
+          '*/tests/*' \
+          '*/deps/external/*' \
+          '*/deps/internal/*' \
+          '*/_deps/*' \
+          '*/googletest/*' \
+          '*/googlemock/*' \
+          --output-file coverage.info --ignore-errors mismatch,unused
+        lcov --list coverage.info --ignore-errors mismatch,unused
 
     - name: Upload coverage reports to Codecov
       uses: codecov/codecov-action@v5
