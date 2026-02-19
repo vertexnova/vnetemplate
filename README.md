@@ -11,6 +11,9 @@
     <img src="https://github.com/vertexnova/vnetemplate/actions/workflows/ci.yml/badge.svg?branch=main" alt="CI"/>
   </a>
   <img src="https://img.shields.io/badge/C%2B%2B-20-blue.svg" alt="C++ Standard"/>
+  <a href="https://codecov.io/gh/vertexnova/vnetemplate">
+    <img src="https://codecov.io/gh/vertexnova/vnetemplate/branch/main/graph/badge.svg" alt="Coverage"/>
+  </a>
   <img src="https://img.shields.io/badge/license-Apache%202.0-green.svg" alt="License"/>
 </p>
 
