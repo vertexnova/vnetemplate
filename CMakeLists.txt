@@ -8,8 +8,22 @@
 # Autodoc:   yes
 #==============================================================================
 
-cmake_minimum_required(VERSION 3.16)
-project(vnetemplate VERSION 1.0.0 LANGUAGES CXX)
+cmake_minimum_required(VERSION 3.19)
+
+# Single source of truth for version (updated by release-please on release)
+set(VERSION_FILE "${CMAKE_CURRENT_LIST_DIR}/VERSION")
+if(EXISTS "${VERSION_FILE}")
+    file(READ "${VERSION_FILE}" VERSION_FROM_FILE)
+    string(STRIP "${VERSION_FROM_FILE}" VERSION_FROM_FILE)
+    if(VERSION_FROM_FILE)
+        set(PROJECT_VERSION_INIT "${VERSION_FROM_FILE}")
+    endif()
+endif()
+if(NOT DEFINED PROJECT_VERSION_INIT)
+    set(PROJECT_VERSION_INIT "1.0.0")
+endif()
+
+project(vnetemplate VERSION ${PROJECT_VERSION_INIT} LANGUAGES CXX)
 
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -147,6 +161,7 @@ endif()
 option(VNE_TEMPLATE_TESTS "Build vnetemplate test suite (turn OFF when used as submodule)" ON)
 option(VNE_TEMPLATE_EXAMPLES "Build vnetemplate example programs (turn OFF when used as submodule)" OFF)
 option(ENABLE_DOXYGEN "Enable Doxygen documentation builds" OFF)
+option(WARNINGS_AS_ERRORS "Treat compiler warnings as errors" OFF)
 
 if(VNE_TEMPLATE_CI)
     set(VNE_TEMPLATE_TESTS ON CACHE BOOL "" FORCE)

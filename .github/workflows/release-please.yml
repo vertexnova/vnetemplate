@@ -1,0 +1,37 @@
+# ----------------------------------------------------------------------
+# Release Please: auto CHANGELOG + version bump + tag on merge of release PR
+# Use Conventional Commits (or PR titles): feat:, fix:, perf:, docs:, chore:, ci:
+# ----------------------------------------------------------------------
+
+name: Release Please
+
+on:
+  push:
+    branches: [ "main" ]
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  release-please:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Release Please
+        id: release
+        uses: googleapis/release-please-action@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          release-type: simple
+          config-file: release-please-config.json
+          manifest-file: .release-please-manifest.json
+
+      - name: Create GitHub Release (on publish)
+        if: ${{ steps.release.outputs.release_created }}
+        run: |
+          echo "Release created: ${{ steps.release.outputs.tag_name }}"
+          echo "See the release for artifacts and changelog."

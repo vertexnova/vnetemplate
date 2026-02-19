@@ -11,12 +11,7 @@ cmake -B build -DVNE_TEMPLATE_EXAMPLES=ON
 cmake --build build
 ```
 
-Or use the dev preset (enables tests and examples):
-
-```bash
-cmake -B build -DVNE_TEMPLATE_DEV=ON
-cmake --build build
-```
+Alternatively, `-DVNE_TEMPLATE_DEV=ON` enables both tests and examples.
 
 Executables are placed in `build/bin/examples/`.
 

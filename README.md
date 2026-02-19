@@ -1,6 +1,27 @@
+<p align="center">
+  <img src="icons/vertexnova_logo_medallion_with_text.svg" alt="VertexNova Template" width="320"/>
+</p>
+
+<p align="center">
+  <strong>Minimal C++ project template for the VertexNova ecosystem</strong>
+</p>
+
+<p align="center">
+  <a href="https://github.com/vertexnova/vnetemplate/actions/workflows/ci.yml">
+    <img src="https://github.com/vertexnova/vnetemplate/actions/workflows/ci.yml/badge.svg?branch=main" alt="CI"/>
+  </a>
+  <img src="https://img.shields.io/badge/C%2B%2B-20-blue.svg" alt="C++ Standard"/>
+  <a href="https://codecov.io/gh/vertexnova/vnetemplate">
+    <img src="https://codecov.io/gh/vertexnova/vnetemplate/branch/main/graph/badge.svg" alt="Coverage"/>
+  </a>
+  <img src="https://img.shields.io/badge/license-Apache%202.0-green.svg" alt="License"/>
+</p>
+
+---
+
 # VneTemplate
 
-Minimal VertexNova-standard C++ template: CMake, deps (external + internal), tests, and documentation.
+Minimal VertexNova-standard C++ template: CMake, deps (external + internal), tests, examples, and documentation. Use it as a starting point for new libraries or apps in the [VertexNova](https://github.com/vertexnova) stack.
 
 ## Directory layout
 
@@ -18,7 +39,7 @@ Minimal VertexNova-standard C++ template: CMake, deps (external + internal), tes
 
 ## Prerequisites
 
-- **CMake** 3.16 or newer  
+- **CMake** 3.19 or newer  
 - **C++20** compiler (e.g. GCC 10+, Clang 10+, MSVC 2019+)  
 - **Doxygen** (optional, for `scripts/generate-docs.sh` and `-DENABLE_DOXYGEN=ON`)
 
@@ -74,6 +95,7 @@ Or:
 
 ## Documentation
 
+- **Template overview and diagrams:** [docs/vertexnova/template/template.md](docs/vertexnova/template/template.md) — context and API diagrams (Draw.io sources in `docs/vertexnova/template/diagrams/`).
 - **API docs:** Configure with Doxygen enabled and build the doc target:
 
   ```bash
@@ -103,6 +125,14 @@ Or:
 ## CI
 
 GitHub Actions runs on push and pull requests to `main`: format check, clang-tidy, and build/test on Linux (GCC, Clang), macOS, and Windows. See [.github/workflows/ci.yml](.github/workflows/ci.yml).
+
+## Contributing
+
+See [CONTRIBUTING.md](CONTRIBUTING.md) for build, test, and style. We follow the [Contributor Covenant](CODE_OF_CONDUCT.md) Code of Conduct.
+
+## Releases
+
+Releases are managed by [release-please](https://github.com/googleapis/release-please). The **VERSION** file at the repo root is the single source of truth; CMake reads it at configuration time (via `file(READ)` in CMakeLists.txt) and uses that value for the project version, which is exposed in code as `get_version()`. Do not hand-edit CHANGELOG.md for versioned entries—use Conventional Commits (e.g. `feat:`, `fix:`) so the release PR updates CHANGELOG and VERSION and creates the tag. See [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ## License
 
