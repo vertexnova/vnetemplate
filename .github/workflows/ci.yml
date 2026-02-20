@@ -27,11 +27,10 @@ jobs:
     - name: Install clang-format
       run: sudo apt-get update && sudo apt-get install -y clang-format
 
-    - name: Check formatting (uses project .clang-format)
+    - name: Check formatting (uses project .clang-format, no file modifications)
       run: |
         find src include examples tests -type f \( -name '*.h' -o -name '*.cpp' -o -name '*.hpp' -o -name '*.c' \) \
-          | xargs clang-format -i --style=file --fallback-style=Google
-        git diff --exit-code
+          -print0 | xargs -0 clang-format --dry-run --Werror --style=file --fallback-style=Google
 
   linux:
     runs-on: ubuntu-latest
