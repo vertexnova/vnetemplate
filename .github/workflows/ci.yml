@@ -30,7 +30,7 @@ jobs:
     - name: Check formatting (uses project .clang-format, no file modifications)
       run: |
         find src include examples tests -type f \( -name '*.h' -o -name '*.cpp' -o -name '*.hpp' -o -name '*.c' \) \
-          -print0 | xargs -0 clang-format --dry-run --Werror --style=file --fallback-style=Google
+          -print0 | xargs -0 -r clang-format --dry-run --Werror --style=file --fallback-style=Google
 
   linux:
     runs-on: ubuntu-latest
