@@ -37,7 +37,7 @@ Thank you for your interest in contributing. This document explains how to build
 ## Pull requests
 
 - Ensure the project builds and tests pass (locally or via CI).
-- Keep changes focused. **Changelog:** We use [release-please](https://github.com/googleapis/release-please); do not hand-edit CHANGELOG.md for versioned entries. Use **Conventional Commits** (or PR titles) so release-please can generate notes. Format: `type(scope): description` or `type: description`. Types: `feat`, `fix`, `perf`, `docs`, `chore`, `ci`. You can use the scope `vertexnova` if you like (e.g. `feat(vertexnova): add logging`, `chore(vertexnova): prepare release`). Commits that don’t start with a type (e.g. "Add logging..." or "Merge pull request...") are ignored by release-please, so use the conventional form for every commit you want in the release notes. When the release PR is merged, CHANGELOG and VERSION are updated and a tag is created.
+- Keep changes focused. CHANGELOG.md is updated manually when cutting a release (see [README.md](README.md#releases)).
 - If you add or change behavior, add or update tests as appropriate.
 
 ## Code review
