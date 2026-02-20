@@ -7,6 +7,11 @@ name: CodeQL
 on:
   push:
     branches: [ "main" ]
+    paths-ignore:
+      - "CHANGELOG.md"
+      - "VERSION"
+      - ".release-please-manifest.json"
+      - ".github/release-please-config.json"
   pull_request:
     branches: [ "main" ]
 
