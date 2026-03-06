@@ -1,4 +1,7 @@
 # VertexNova C++ .clang-format
+# Targets clang-format 17. Some options here were removed in clang-format 18+
+# (AllowAllConstructorInitializersOnNextLine, ConstructorInitializerAllOnOneLineOrOnePerLine,
+# AlwaysBreakAfterReturnType). Update ci.yml pin and this comment together when upgrading.
 AlignConsecutiveAssignments: false
 AlignConsecutiveDeclarations: false
 AlignEscapedNewlines: Left

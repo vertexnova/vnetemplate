@@ -1,7 +1,22 @@
 # ----------------------------------------------------------------------
-# Release Please: opens/updates a Release PR from conventional commits.
-# Merge that PR to update CHANGELOG.md and VERSION; optional tagging.
-# Repo Settings → Actions → General: "Read and write" + allow Actions to create PRs.
+# Copyright (c) 2026 Ajeet Singh Yadav. All rights reserved.
+# Licensed under the Apache License, Version 2.0 (the "License")
+#
+# Author:    Ajeet Singh Yadav
+# Created:   February 2026
+#
+# Description: Release Please: opens/updates a Release PR from conventional commits.
+# When the Release PR is merged, publishes pre-built binary artifacts
+# (Release + Debug) for all supported platforms to the GitHub Release.
+# Two-tier release model:
+#   Tier 1 — source consumers: pin the release tag as a git submodule.
+#   Tier 2 — binary consumers: download .tar.gz from GitHub Releases.
+# Repo Settings required (one-time):
+#   Settings → General → "Allow auto-merge" — ON
+#   Settings → Branches → main → "Allow auto-merge" — ON
+#   REPO_ACCESS_TOKEN (optional): use for higher limits; else github.token is used.
+#
+# Autodoc:   yes
 # ----------------------------------------------------------------------
 
 name: Release Please
@@ -10,15 +25,123 @@ on:
   push:
     branches: ["main"]
 
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false   # NEVER cancel an in-progress release
+
 permissions:
   contents: write
   pull-requests: write
 
 jobs:
+  # --------------------------------------------------------------------
+  # Stage 1: Create or update the Release PR via release-please.
+  #          Auto-merge it once all required CI checks pass.
+  # --------------------------------------------------------------------
   release-please:
+    name: "Release / release-please"
     runs-on: ubuntu-latest
+    outputs:
+      release_created: ${{ steps.rp.outputs.release_created }}
+      tag_name:        ${{ steps.rp.outputs.tag_name }}
+      version:         ${{ steps.rp.outputs.version }}
     steps:
-      - name: Release Please
+      - name: Run release-please
+        id: rp
         uses: googleapis/release-please-action@v4
         with:
           config-file: .github/release-please-config.json
+          token: ${{ secrets.REPO_ACCESS_TOKEN || github.token }}
+
+      # Enable auto-merge so the Release PR merges automatically once
+      # the CI Gate required status check passes — no human needed.
+      - name: Enable auto-merge on Release PR
+        if: steps.rp.outputs.pr != ''
+        env:
+          GH_TOKEN: ${{ secrets.REPO_ACCESS_TOKEN || github.token }}
+        run: gh pr merge --auto --squash "${{ steps.rp.outputs.pr }}"
+
+  # --------------------------------------------------------------------
+  # Stage 2: Build and publish artifacts (only after release is created).
+  #
+  # Produces 6 tarballs per release:
+  #   vnetemplate-vX.Y.Z-{platform}-{Release|Debug}.tar.gz
+  #
+  # Contents: static library in lib/ (libvnetemplate.a on Unix, vnetemplate.lib on Windows),
+  #           include/vertexnova/template/, lib/cmake/vnetemplate/
+  # --------------------------------------------------------------------
+  publish:
+    name: "Release / publish (${{ matrix.platform }}, ${{ matrix.build_type }})"
+    needs: [release-please]
+    if: needs.release-please.outputs.release_created == 'true'
+    permissions:
+      contents: write   # upload release assets
+
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - platform: linux-gcc
+            runner:   ubuntu-latest
+            c:        gcc
+            cpp:      g++
+          - platform: macos
+            runner:   macos-latest
+            c:        ""
+            cpp:      ""
+          - platform: windows
+            runner:   windows-latest
+            c:        ""
+            cpp:      ""
+        build_type: [Release, Debug]
+
+    runs-on: ${{ matrix.runner }}
+    steps:
+      - name: Use HTTPS for GitHub (CI runners have no SSH key)
+        run: git config --global url."https://github.com/".insteadOf "git@github.com:"
+
+      - uses: actions/checkout@v4
+        with:
+          # Check out the exact release tag — not HEAD — so artifacts are
+          # built from the same tree that release-please tagged.
+          ref: ${{ needs.release-please.outputs.tag_name }}
+          submodules: recursive
+
+      - name: Install Linux build dependencies
+        if: runner.os == 'Linux'
+        run: sudo apt-get update -qq && sudo apt-get install -y build-essential cmake
+
+      - name: Configure CMake
+        shell: bash
+        run: |
+          COMPILER_FLAGS=""
+          if [[ -n "${{ matrix.c }}" ]]; then
+            COMPILER_FLAGS="-DCMAKE_C_COMPILER=${{ matrix.c }} -DCMAKE_CXX_COMPILER=${{ matrix.cpp }}"
+          fi
+          cmake -B build -S . \
+            -DCMAKE_BUILD_TYPE=${{ matrix.build_type }} \
+            -DVNE_TEMPLATE_CI=ON \
+            -DCMAKE_INSTALL_PREFIX="$GITHUB_WORKSPACE/install" \
+            $COMPILER_FLAGS
+
+      - name: Build
+        shell: bash
+        run: cmake --build build --config ${{ matrix.build_type }} --parallel
+
+      - name: Install to staging directory
+        shell: bash
+        run: cmake --install build --config ${{ matrix.build_type }}
+
+      - name: Package artifact
+        shell: bash
+        run: |
+          ARTIFACT="vnetemplate-v${{ needs.release-please.outputs.version }}-${{ matrix.platform }}-${{ matrix.build_type }}.tar.gz"
+          cd "$GITHUB_WORKSPACE/install"
+          tar -czf "$GITHUB_WORKSPACE/${ARTIFACT}" .
+          echo "ARTIFACT=${ARTIFACT}" >> "$GITHUB_ENV"
+
+      - name: Upload to GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ needs.release-please.outputs.tag_name }}
+          files: ${{ env.ARTIFACT }}

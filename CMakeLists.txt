@@ -174,19 +174,54 @@ option(VNE_TEMPLATE_TESTS "Build vnetemplate test suite (turn OFF when used as s
 option(VNE_TEMPLATE_EXAMPLES "Build vnetemplate example programs (turn OFF when used as submodule)" OFF)
 option(ENABLE_DOXYGEN "Enable Doxygen documentation builds" OFF)
 option(ENABLE_COVERAGE "Enable code coverage reporting" OFF)
+option(ENABLE_ASAN "Enable AddressSanitizer + UndefinedBehaviorSanitizer (Clang/GCC, Linux/macOS only)" OFF)
 option(WARNINGS_AS_ERRORS "Treat compiler warnings as errors" OFF)
 
 #==============================================================================
-# Coverage Support (match vnelogging: include FindCoverage only when enabled)
+# Incompatible options: coverage and ASan/UBSan must not both be enabled
+# (--coverage + -fsanitize=... together produce noisy/incorrect results).
+#==============================================================================
+if(ENABLE_COVERAGE AND ENABLE_ASAN)
+    message(FATAL_ERROR
+        "ENABLE_COVERAGE and ENABLE_ASAN cannot both be ON. "
+        "Choose one: coverage (gcov/lcov) or ASan/UBSan. "
+        "Reconfigure with -DENABLE_COVERAGE=OFF or -DENABLE_ASAN=OFF.")
+endif()
+
+#==============================================================================
+# Coverage Support (gcov/lcov for CI; .gcda files generated when tests run)
 #==============================================================================
 if(ENABLE_COVERAGE)
-    include(FindCoverage)
+    include(FindCoverage OPTIONAL)
+    # Ensure coverage flags are applied (GCC/Clang) so .gcda files are emitted
+    if(CMAKE_C_COMPILER_ID MATCHES "GNU|Clang")
+        set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} --coverage")
+        set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} --coverage")
+        set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} --coverage")
+    endif()
+endif()
+
+#==============================================================================
+# AddressSanitizer + UndefinedBehaviorSanitizer
+# Linux/macOS only; incompatible with coverage (--coverage + ASan = noise).
+#==============================================================================
+if(ENABLE_ASAN)
+    if(CMAKE_C_COMPILER_ID MATCHES "GNU|Clang" AND NOT WIN32)
+        add_compile_options(-fsanitize=address,undefined -fno-omit-frame-pointer)
+        add_link_options(-fsanitize=address,undefined)
+    else()
+        message(WARNING "ENABLE_ASAN is only supported with GCC/Clang on Linux/macOS — ignoring.")
+    endif()
 endif()
 
 if(VNE_TEMPLATE_CI)
-    set(VNE_TEMPLATE_TESTS ON CACHE BOOL "" FORCE)
+    # CI enables tests by default, but allow explicit -DVNE_TEMPLATE_TESTS=OFF to override
+    # (e.g. iOS/Android cross-compile builds: Xcode requires bundle ID for test targets).
+    if(NOT DEFINED VNE_TEMPLATE_TESTS OR VNE_TEMPLATE_TESTS)
+        set(VNE_TEMPLATE_TESTS ON CACHE BOOL "" FORCE)
+    endif()
     set(VNE_TEMPLATE_EXAMPLES OFF CACHE BOOL "" FORCE)
-    message(STATUS "VneTemplate: CI build -> VNE_TEMPLATE_TESTS=ON, VNE_TEMPLATE_EXAMPLES=OFF")
+    message(STATUS "VneTemplate: CI build -> VNE_TEMPLATE_TESTS=${VNE_TEMPLATE_TESTS}, VNE_TEMPLATE_EXAMPLES=OFF")
 elseif(VNE_TEMPLATE_DEV)
     set(VNE_TEMPLATE_TESTS ON CACHE BOOL "" FORCE)
     set(VNE_TEMPLATE_EXAMPLES ON CACHE BOOL "" FORCE)

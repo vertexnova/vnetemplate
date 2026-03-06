@@ -71,3 +71,17 @@ logs/
 
 # CMakeLists.txt.user
 CMakeLists.txt.user
+
+# AI tools
+.cursor/
+.copilot/
+.claude/
+.deepseek/
+.gemini/
+.google/
+.openai/
+.anthropic/
+.perplexity/
+.grok/
+.grok/
+.grok/
