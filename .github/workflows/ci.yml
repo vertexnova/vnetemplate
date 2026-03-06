@@ -7,7 +7,7 @@
 #
 # Description: CI pipeline — staged, gated, with concurrency cancellation.
 # Stage 1 — Pre-checks  : clang-format, commit-lint (fail-fast gate)
-# Stage 2+3 — Build+Test: Linux GCC/Clang, macOS, Windows (parallel)
+# Stage 2+3 — Build+Test: Linux GCC/Clang/ASan, macOS, Windows (parallel)
 # Stage 4 — Analysis    : clang-tidy (reuses Clang build cache)
 # Stage 5 — CI Gate     : single required status check for branch protection
 # Branch protection: require only "CI Gate" — not individual job names.
@@ -196,6 +196,21 @@ jobs:
       warnings_as_errors: true
     secrets: inherit
 
+  build-linux-asan:
+    name: "Build+Test / Linux ASan+UBSan"
+    needs: [pre-checks-gate]
+    uses: ./.github/workflows/build-reusable.yml
+    with:
+      runner:             ubuntu-latest
+      c_compiler:         clang
+      cpp_compiler:       clang++
+      platform:           linux-asan
+      build_type:         Debug
+      enable_coverage:    false
+      warnings_as_errors: true
+      extra_cmake_flags:  "-DENABLE_ASAN=ON"
+    secrets: inherit
+
   # ====================================================================
   # STAGE 4: STATIC ANALYSIS
   # clang-tidy runs after the Clang build so it can reuse the
@@ -272,6 +287,7 @@ jobs:
       - pre-checks-gate
       - build-linux-gcc
       - build-linux-clang
+      - build-linux-asan
       - build-macos
       - build-windows
       - clang-tidy
@@ -283,6 +299,7 @@ jobs:
             "pre-checks-gate=${{ needs.pre-checks-gate.result }}"
             "build-linux-gcc=${{ needs.build-linux-gcc.result }}"
             "build-linux-clang=${{ needs.build-linux-clang.result }}"
+            "build-linux-asan=${{ needs.build-linux-asan.result }}"
             "build-macos=${{ needs.build-macos.result }}"
             "build-windows=${{ needs.build-windows.result }}"
             "clang-tidy=${{ needs.clang-tidy.result }}"
@@ -311,6 +328,7 @@ jobs:
           echo "| pre-checks-gate   | ${{ needs.pre-checks-gate.result }}   |" >> "$GITHUB_STEP_SUMMARY"
           echo "| build-linux-gcc   | ${{ needs.build-linux-gcc.result }}   |" >> "$GITHUB_STEP_SUMMARY"
           echo "| build-linux-clang | ${{ needs.build-linux-clang.result }} |" >> "$GITHUB_STEP_SUMMARY"
+          echo "| build-linux-asan  | ${{ needs.build-linux-asan.result }}  |" >> "$GITHUB_STEP_SUMMARY"
           echo "| build-macos       | ${{ needs.build-macos.result }}       |" >> "$GITHUB_STEP_SUMMARY"
           echo "| build-windows     | ${{ needs.build-windows.result }}     |" >> "$GITHUB_STEP_SUMMARY"
           echo "| clang-tidy        | ${{ needs.clang-tidy.result }}        |" >> "$GITHUB_STEP_SUMMARY"

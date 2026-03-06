@@ -50,6 +50,11 @@ on:
         required: false
         type: boolean
         default: true
+      extra_cmake_flags:
+        description: "Extra CMake -D flags appended verbatim (e.g. -DENABLE_ASAN=ON)"
+        required: false
+        type: string
+        default: ""
     secrets:
       codecov_token:
         description: "Codecov upload token (required when enable_coverage is true)"
@@ -80,12 +85,15 @@ jobs:
       # ------------------------------------------------------------------
       - name: Set effective build type and cache key
         shell: bash
+        env:
+          BUILD_TYPE:      ${{ inputs.build_type }}
+          ENABLE_COVERAGE: ${{ inputs.enable_coverage }}
         run: |
-          echo "EFFECTIVE_BUILD_TYPE=${{ inputs.build_type }}" >> "$GITHUB_ENV"
-          if [[ "${{ inputs.enable_coverage }}" == "true" ]]; then
-            echo "CACHE_BUILD_TYPE=${{ inputs.build_type }}-coverage" >> "$GITHUB_ENV"
+          echo "EFFECTIVE_BUILD_TYPE=$BUILD_TYPE" >> "$GITHUB_ENV"
+          if [[ "$ENABLE_COVERAGE" == "true" ]]; then
+            echo "CACHE_BUILD_TYPE=${BUILD_TYPE}-coverage" >> "$GITHUB_ENV"
           else
-            echo "CACHE_BUILD_TYPE=${{ inputs.build_type }}" >> "$GITHUB_ENV"
+            echo "CACHE_BUILD_TYPE=$BUILD_TYPE" >> "$GITHUB_ENV"
           fi
 
       - name: Cache CMake build
@@ -117,24 +125,32 @@ jobs:
       # ------------------------------------------------------------------
       - name: Configure CMake
         shell: bash
+        env:
+          ENABLE_COVERAGE: ${{ inputs.enable_coverage }}
+          C_COMPILER:      ${{ inputs.c_compiler }}
+          CPP_COMPILER:    ${{ inputs.cpp_compiler }}
+          EXTRA_FLAGS:     ${{ inputs.extra_cmake_flags }}
+          WAE:             ${{ inputs.warnings_as_errors && 'ON' || 'OFF' }}
         run: |
           COVERAGE_FLAG=""
-          if [[ "${{ inputs.enable_coverage }}" == "true" ]]; then
+          if [[ "$ENABLE_COVERAGE" == "true" ]]; then
             COVERAGE_FLAG="-DENABLE_COVERAGE=ON"
           fi
 
           COMPILER_FLAGS=""
-          if [[ -n "${{ inputs.c_compiler }}" ]]; then
-            COMPILER_FLAGS="-DCMAKE_C_COMPILER=${{ inputs.c_compiler }} -DCMAKE_CXX_COMPILER=${{ inputs.cpp_compiler }}"
+          if [[ -n "$C_COMPILER" ]]; then
+            COMPILER_FLAGS="-DCMAKE_C_COMPILER=$C_COMPILER -DCMAKE_CXX_COMPILER=$CPP_COMPILER"
           fi
 
+          # shellcheck disable=SC2086  # intentional word-splitting for flag vars
           cmake -B build -S . \
             -DCMAKE_BUILD_TYPE="$EFFECTIVE_BUILD_TYPE" \
             -DVNE_TEMPLATE_CI=ON \
-            -DWARNINGS_AS_ERRORS=${{ inputs.warnings_as_errors && 'ON' || 'OFF' }} \
+            -DWARNINGS_AS_ERRORS="$WAE" \
             -DCMAKE_EXPORT_COMPILE_COMMANDS=ON \
             ${COVERAGE_FLAG} \
-            ${COMPILER_FLAGS}
+            ${COMPILER_FLAGS} \
+            ${EXTRA_FLAGS}
 
       - name: Build
         shell: bash
