@@ -14,7 +14,7 @@
 # Repo Settings required (one-time):
 #   Settings → General → "Allow auto-merge" — ON
 #   Settings → Branches → main → "Allow auto-merge" — ON
-#   REPO_ACCESS_TOKEN secret with repo scope (for release-please + auto-merge)
+#   REPO_ACCESS_TOKEN (optional): use for higher limits; else github.token is used.
 #
 # Autodoc:   yes
 # ----------------------------------------------------------------------
@@ -51,14 +51,14 @@ jobs:
         uses: googleapis/release-please-action@v4
         with:
           config-file: .github/release-please-config.json
-          token: ${{ secrets.REPO_ACCESS_TOKEN }}
+          token: ${{ secrets.REPO_ACCESS_TOKEN || github.token }}
 
       # Enable auto-merge so the Release PR merges automatically once
       # the CI Gate required status check passes — no human needed.
       - name: Enable auto-merge on Release PR
         if: steps.rp.outputs.pr != ''
         env:
-          GH_TOKEN: ${{ secrets.REPO_ACCESS_TOKEN }}
+          GH_TOKEN: ${{ secrets.REPO_ACCESS_TOKEN || github.token }}
         run: gh pr merge --auto --squash "${{ steps.rp.outputs.pr }}"
 
   # --------------------------------------------------------------------
@@ -67,8 +67,8 @@ jobs:
   # Produces 6 tarballs per release:
   #   vnetemplate-vX.Y.Z-{platform}-{Release|Debug}.tar.gz
   #
-  # Contents: lib/libvnetemplate.a, include/vertexnova/template/,
-  #           lib/cmake/vnetemplate/
+  # Contents: static library in lib/ (libvnetemplate.a on Unix, vnetemplate.lib on Windows),
+  #           include/vertexnova/template/, lib/cmake/vnetemplate/
   # --------------------------------------------------------------------
   publish:
     name: "Release / publish (${{ matrix.platform }}, ${{ matrix.build_type }})"
