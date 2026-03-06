@@ -58,8 +58,14 @@ jobs:
         with:
           submodules: false   # clang-format only reads src/ include/ — no deps needed
 
-      - name: Install clang-format
-        run: sudo apt-get update -qq && sudo apt-get install -y clang-format
+      - name: Install clang-format-17
+        # Pin to 17: the .clang-format file uses options removed in clang-format 18+
+        # (AllowAllConstructorInitializersOnNextLine, ConstructorInitializerAllOnOneLineOrOnePerLine).
+        # Update this pin together with .clang-format when upgrading.
+        run: sudo apt-get update -qq && sudo apt-get install -y clang-format-17
+
+      - name: Alias clang-format
+        run: sudo ln -sf /usr/bin/clang-format-17 /usr/local/bin/clang-format
 
       - name: Check formatting (uses project .clang-format, no modifications)
         run: |
