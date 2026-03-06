@@ -5,14 +5,14 @@
 # Author:    Ajeet Singh Yadav
 # Created:   February 2026
 #
-# CI pipeline — staged, gated, with concurrency cancellation.
-#
+# Description: CI pipeline — staged, gated, with concurrency cancellation.
 # Stage 1 — Pre-checks  : clang-format, commit-lint (fail-fast gate)
 # Stage 2+3 — Build+Test: Linux GCC/Clang, macOS, Windows (parallel)
 # Stage 4 — Analysis    : clang-tidy (reuses Clang build cache)
 # Stage 5 — CI Gate     : single required status check for branch protection
-#
 # Branch protection: require only "CI Gate" — not individual job names.
+#
+# Autodoc:   yes
 # ----------------------------------------------------------------------
 
 name: CI

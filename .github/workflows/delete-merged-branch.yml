@@ -1,8 +1,17 @@
-# Delete the source branch when a pull request is merged.
-# Skips deletion for the default branch (main) and for forks (no write access).
+# ----------------------------------------------------------------------
+# Copyright (c) 2026 Ajeet Singh Yadav. All rights reserved.
+# Licensed under the Apache License, Version 2.0 (the "License")
 #
-# If your org disables "Read and write permissions" for GITHUB_TOKEN, add a
-# PAT (repo scope) as repository secret REPO_ACCESS_TOKEN; this job will use it.
+# Author:    Ajeet Singh Yadav
+# Created:   February 2026
+#
+# Description: Delete the source branch when a pull request is merged. Skips
+# deletion for the default branch (main) and for forks (no write access).
+# If your org disables "Read and write permissions" for GITHUB_TOKEN, add
+# a PAT (repo scope) as repository secret REPO_ACCESS_TOKEN; this job will use it.
+#
+# Autodoc:   yes
+# ----------------------------------------------------------------------
 
 name: Delete branch on merge
 

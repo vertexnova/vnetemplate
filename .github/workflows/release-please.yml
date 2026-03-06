@@ -5,18 +5,18 @@
 # Author:    Ajeet Singh Yadav
 # Created:   February 2026
 #
-# Release Please: opens/updates a Release PR from conventional commits.
+# Description: Release Please: opens/updates a Release PR from conventional commits.
 # When the Release PR is merged, publishes pre-built binary artifacts
 # (Release + Debug) for all supported platforms to the GitHub Release.
-#
 # Two-tier release model:
 #   Tier 1 — source consumers: pin the release tag as a git submodule.
 #   Tier 2 — binary consumers: download .tar.gz from GitHub Releases.
-#
 # Repo Settings required (one-time):
 #   Settings → General → "Allow auto-merge" — ON
 #   Settings → Branches → main → "Allow auto-merge" — ON
 #   REPO_ACCESS_TOKEN secret with repo scope (for release-please + auto-merge)
+#
+# Autodoc:   yes
 # ----------------------------------------------------------------------
 
 name: Release Please

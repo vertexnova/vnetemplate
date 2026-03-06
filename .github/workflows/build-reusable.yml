@@ -5,8 +5,10 @@
 # Author:    Ajeet Singh Yadav
 # Created:   March 2026
 #
-# Reusable workflow: configure, build, test, and optionally collect
-# coverage for one platform. Called by ci.yml and release-please.yml.
+# Description: Reusable workflow: configure, build, test, and optionally
+# collect coverage for one platform. Called by ci.yml and release-please.yml.
+#
+# Autodoc:   yes
 # ----------------------------------------------------------------------
 
 name: "Build and Test (Reusable)"
