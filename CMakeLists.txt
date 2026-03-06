@@ -177,10 +177,16 @@ option(ENABLE_COVERAGE "Enable code coverage reporting" OFF)
 option(WARNINGS_AS_ERRORS "Treat compiler warnings as errors" OFF)
 
 #==============================================================================
-# Coverage Support (match vnelogging: include FindCoverage only when enabled)
+# Coverage Support (gcov/lcov for CI; .gcda files generated when tests run)
 #==============================================================================
 if(ENABLE_COVERAGE)
-    include(FindCoverage)
+    include(FindCoverage OPTIONAL)
+    # Ensure coverage flags are applied (GCC/Clang) so .gcda files are emitted
+    if(CMAKE_C_COMPILER_ID MATCHES "GNU|Clang")
+        set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} --coverage")
+        set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} --coverage")
+        set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} --coverage")
+    endif()
 endif()
 
 if(VNE_TEMPLATE_CI)

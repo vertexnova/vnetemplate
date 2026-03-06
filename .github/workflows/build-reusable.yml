@@ -181,7 +181,7 @@ jobs:
         if: inputs.enable_coverage
         run: |
           lcov --capture --directory build --output-file coverage.info \
-            --ignore-errors mismatch,unused
+            --ignore-errors mismatch,unused,empty
           lcov --remove coverage.info \
             '/usr/*' '*/tests/*' '*/deps/external/*' '*/deps/internal/*' \
             '*/_deps/*' '*/googletest/*' '*/googlemock/*' \
