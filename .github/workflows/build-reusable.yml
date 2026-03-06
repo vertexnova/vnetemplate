@@ -62,33 +62,34 @@ jobs:
     runs-on: ${{ inputs.runner }}
 
     steps:
-      - uses: actions/checkout@v4
-        with:
-          submodules: true   # direct submodules only (vnecmake, googletest, vnecommon, vnelogging)
-
       - name: Use HTTPS for GitHub (CI runners have no SSH key)
         run: git config --global url."https://github.com/".insteadOf "git@github.com:"
 
-      - name: Init nested submodules
-        shell: bash
-        run: |
-          for dep in deps/internal/vnelogging deps/internal/vnecommon; do
-            if [ -d "$dep/.git" ]; then
-              git -C "$dep" submodule update --init --recursive
-            fi
-          done
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
 
       # ------------------------------------------------------------------
-      # CMake build cache — keyed on CMakeLists + .gitmodules content.
-      # hashFiles args must be separate quoted strings (not comma-joined).
+      # CMake build cache — coverage builds use "Debug-coverage" as the
+      # type discriminator so they never restore from a Release cache
+      # (Release object files lack --coverage instrumentation).
       # ------------------------------------------------------------------
+      - name: Set cache build type key
+        shell: bash
+        run: |
+          if [[ "${{ inputs.enable_coverage }}" == "true" ]]; then
+            echo "CACHE_BUILD_TYPE=Debug-coverage" >> "$GITHUB_ENV"
+          else
+            echo "CACHE_BUILD_TYPE=${{ inputs.build_type }}" >> "$GITHUB_ENV"
+          fi
+
       - name: Cache CMake build
         uses: actions/cache@v4
         with:
           path: build
-          key: build-${{ inputs.platform }}-${{ inputs.build_type }}-${{ hashFiles('CMakeLists.txt') }}-${{ hashFiles('**/CMakeLists.txt') }}-${{ hashFiles('.gitmodules') }}
+          key: build-${{ inputs.platform }}-${{ env.CACHE_BUILD_TYPE }}-${{ hashFiles('CMakeLists.txt') }}-${{ hashFiles('**/CMakeLists.txt') }}-${{ hashFiles('.gitmodules') }}
           restore-keys: |
-            build-${{ inputs.platform }}-${{ inputs.build_type }}-
+            build-${{ inputs.platform }}-${{ env.CACHE_BUILD_TYPE }}-
             build-${{ inputs.platform }}-
 
       - name: Install Linux build dependencies

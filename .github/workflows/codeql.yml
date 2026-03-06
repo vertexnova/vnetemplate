@@ -40,20 +40,12 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v4
-        with:
-          submodules: true
-
       - name: Use HTTPS for GitHub (CI runners have no SSH key)
         run: git config --global url."https://github.com/".insteadOf "git@github.com:"
 
-      - name: Init nested submodules
-        run: |
-          for dep in deps/internal/vnelogging deps/internal/vnecommon; do
-            if [ -d "$dep/.git" ]; then
-              git -C "$dep" submodule update --init --recursive
-            fi
-          done
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
 
       # Warm the cache from whatever ci.yml left for linux-gcc-Release.
       # On cache miss, CodeQL builds from scratch — still correct.

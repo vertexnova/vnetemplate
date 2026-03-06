@@ -210,20 +210,12 @@ jobs:
       contents: read
 
     steps:
-      - uses: actions/checkout@v4
-        with:
-          submodules: true
-
       - name: Use HTTPS for GitHub (CI runners have no SSH key)
         run: git config --global url."https://github.com/".insteadOf "git@github.com:"
 
-      - name: Init nested submodules
-        run: |
-          for dep in deps/internal/vnelogging deps/internal/vnecommon; do
-            if [ -d "$dep/.git" ]; then
-              git -C "$dep" submodule update --init --recursive
-            fi
-          done
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
 
       # Restore the Clang Release build cache written by build-linux-clang.
       # Same key as build-reusable.yml for linux-clang/Release.

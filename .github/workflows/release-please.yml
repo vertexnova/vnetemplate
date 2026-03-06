@@ -97,24 +97,15 @@ jobs:
 
     runs-on: ${{ matrix.runner }}
     steps:
+      - name: Use HTTPS for GitHub (CI runners have no SSH key)
+        run: git config --global url."https://github.com/".insteadOf "git@github.com:"
+
       - uses: actions/checkout@v4
         with:
           # Check out the exact release tag — not HEAD — so artifacts are
           # built from the same tree that release-please tagged.
           ref: ${{ needs.release-please.outputs.tag_name }}
-          submodules: true
-
-      - name: Use HTTPS for GitHub (CI runners have no SSH key)
-        run: git config --global url."https://github.com/".insteadOf "git@github.com:"
-
-      - name: Init nested submodules
-        shell: bash
-        run: |
-          for dep in deps/internal/vnelogging deps/internal/vnecommon; do
-            if [ -d "$dep/.git" ]; then
-              git -C "$dep" submodule update --init --recursive
-            fi
-          done
+          submodules: recursive
 
       - name: Install Linux build dependencies
         if: runner.os == 'Linux'
