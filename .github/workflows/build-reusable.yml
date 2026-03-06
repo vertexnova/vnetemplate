@@ -96,7 +96,10 @@ jobs:
             echo "CACHE_BUILD_TYPE=$BUILD_TYPE" >> "$GITHUB_ENV"
           fi
 
+      # Skip cache for coverage: we clean build/ right after to force instrumented rebuild,
+      # so restore would be discarded and would waste time/bandwidth.
       - name: Cache CMake build
+        if: ${{ !inputs.enable_coverage }}
         uses: actions/cache@v4
         with:
           path: build

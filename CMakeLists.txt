@@ -178,6 +178,17 @@ option(ENABLE_ASAN "Enable AddressSanitizer + UndefinedBehaviorSanitizer (Clang/
 option(WARNINGS_AS_ERRORS "Treat compiler warnings as errors" OFF)
 
 #==============================================================================
+# Incompatible options: coverage and ASan/UBSan must not both be enabled
+# (--coverage + -fsanitize=... together produce noisy/incorrect results).
+#==============================================================================
+if(ENABLE_COVERAGE AND ENABLE_ASAN)
+    message(FATAL_ERROR
+        "ENABLE_COVERAGE and ENABLE_ASAN cannot both be ON. "
+        "Choose one: coverage (gcov/lcov) or ASan/UBSan. "
+        "Reconfigure with -DENABLE_COVERAGE=OFF or -DENABLE_ASAN=OFF.")
+endif()
+
+#==============================================================================
 # Coverage Support (gcov/lcov for CI; .gcda files generated when tests run)
 #==============================================================================
 if(ENABLE_COVERAGE)

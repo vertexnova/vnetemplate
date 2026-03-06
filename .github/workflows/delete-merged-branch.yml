@@ -41,7 +41,16 @@ jobs:
             exit 0
           fi
           echo "Deleting branch: $BRANCH"
-          gh api \
+          DELETE_OUTPUT=$(gh api \
             --method DELETE \
-            "repos/${{ github.repository }}/git/refs/heads/${BRANCH}" \
-            || echo "Branch may already be deleted or does not exist."
+            "repos/${{ github.repository }}/git/refs/heads/${BRANCH}" 2>&1)
+          DELETE_STATUS=$?
+          if [ "$DELETE_STATUS" -ne 0 ]; then
+            if echo "$DELETE_OUTPUT" | grep -qi -e "Reference does not exist" -e "Not Found"; then
+              echo "Branch may already be deleted or does not exist."
+            else
+              echo "Failed to delete branch: $BRANCH"
+              echo "$DELETE_OUTPUT"
+              exit "$DELETE_STATUS"
+            fi
+          fi
