@@ -121,7 +121,7 @@ jobs:
           cmake -B build -S . \
             -DCMAKE_BUILD_TYPE=${{ matrix.build_type }} \
             -DVNE_TEMPLATE_CI=ON \
-            -DCMAKE_INSTALL_PREFIX=install \
+            -DCMAKE_INSTALL_PREFIX="$GITHUB_WORKSPACE/install" \
             $COMPILER_FLAGS
 
       - name: Build
@@ -136,8 +136,8 @@ jobs:
         shell: bash
         run: |
           ARTIFACT="vnetemplate-v${{ needs.release-please.outputs.version }}-${{ matrix.platform }}-${{ matrix.build_type }}.tar.gz"
-          cd install
-          tar -czf "../${ARTIFACT}" .
+          cd "$GITHUB_WORKSPACE/install"
+          tar -czf "$GITHUB_WORKSPACE/${ARTIFACT}" .
           echo "ARTIFACT=${ARTIFACT}" >> "$GITHUB_ENV"
 
       - name: Upload to GitHub Release
