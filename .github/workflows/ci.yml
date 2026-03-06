@@ -229,6 +229,58 @@ jobs:
       - name: Build
         run: cmake --build build --parallel
 
+  build-ios:
+    name: "Build / iOS"
+    needs: [pre-checks-gate]
+    runs-on: macos-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Use HTTPS for GitHub (CI runners have no SSH key)
+        run: git config --global url."https://github.com/".insteadOf "git@github.com:"
+
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Configure CMake (iOS)
+        run: |
+          cmake -B build -S . \
+            -G Xcode \
+            -DCMAKE_SYSTEM_NAME=iOS \
+            -DCMAKE_OSX_ARCHITECTURES=arm64 \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DVNE_TEMPLATE_CI=ON
+
+      - name: Build
+        run: cmake --build build --config Release --parallel
+
+  build-android:
+    name: "Build / Android (arm64-v8a)"
+    needs: [pre-checks-gate]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Use HTTPS for GitHub (CI runners have no SSH key)
+        run: git config --global url."https://github.com/".insteadOf "git@github.com:"
+
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Configure CMake (Android)
+        run: |
+          cmake -B build -S . \
+            -DCMAKE_TOOLCHAIN_FILE="$ANDROID_NDK/build/cmake/android.toolchain.cmake" \
+            -DANDROID_ABI=arm64-v8a \
+            -DANDROID_PLATFORM=android-24 \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DVNE_TEMPLATE_CI=ON
+
+      - name: Build
+        run: cmake --build build --parallel
+
   build-linux-asan:
     name: "Build+Test / Linux ASan+UBSan"
     needs: [pre-checks-gate]
@@ -324,6 +376,8 @@ jobs:
       - build-macos
       - build-windows
       - build-web
+      - build-ios
+      - build-android
       - clang-tidy
 
     steps:
@@ -337,6 +391,8 @@ jobs:
             "build-macos=${{ needs.build-macos.result }}"
             "build-windows=${{ needs.build-windows.result }}"
             "build-web=${{ needs.build-web.result }}"
+            "build-ios=${{ needs.build-ios.result }}"
+            "build-android=${{ needs.build-android.result }}"
             "clang-tidy=${{ needs.clang-tidy.result }}"
           )
           FAILED=0
@@ -367,4 +423,6 @@ jobs:
           echo "| build-macos       | ${{ needs.build-macos.result }}       |" >> "$GITHUB_STEP_SUMMARY"
           echo "| build-windows     | ${{ needs.build-windows.result }}     |" >> "$GITHUB_STEP_SUMMARY"
           echo "| build-web         | ${{ needs.build-web.result }}         |" >> "$GITHUB_STEP_SUMMARY"
+          echo "| build-ios         | ${{ needs.build-ios.result }}         |" >> "$GITHUB_STEP_SUMMARY"
+          echo "| build-android     | ${{ needs.build-android.result }}     |" >> "$GITHUB_STEP_SUMMARY"
           echo "| clang-tidy        | ${{ needs.clang-tidy.result }}        |" >> "$GITHUB_STEP_SUMMARY"
