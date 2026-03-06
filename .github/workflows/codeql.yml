@@ -1,48 +1,91 @@
 # ----------------------------------------------------------------------
-# CodeQL analysis for C++ (security and quality)
+# Copyright (c) 2026 Ajeet Singh Yadav. All rights reserved.
+# Licensed under the Apache License, Version 2.0 (the "License")
+#
+# Author:    Ajeet Singh Yadav
+# Created:   February 2026
+#
+# CodeQL security analysis for C++.
+# Runs on push/PR to main and weekly (to catch newly discovered patterns).
 # ----------------------------------------------------------------------
 
 name: CodeQL
 
 on:
   push:
-    branches: [ "main" ]
+    branches: ["main"]
     paths-ignore:
       - "CHANGELOG.md"
       - "VERSION"
       - ".release-please-manifest.json"
       - ".github/release-please-config.json"
+      - "docs/**"
+      - "*.md"
   pull_request:
-    branches: [ "main" ]
+    branches: ["main"]
+  schedule:
+    - cron: "0 2 * * 1"   # Weekly Monday 02:00 UTC
+
+concurrency:
+  group: codeql-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  security-events: write
+  contents: read
 
 jobs:
   analyze:
-    name: Analyze
+    name: "Security / CodeQL (C++)"
     runs-on: ubuntu-latest
-    permissions:
-      security-events: write
-      actions: read
-      contents: read
 
     steps:
-    - uses: actions/checkout@v4
-      with:
-        submodules: true
+      - uses: actions/checkout@v4
+        with:
+          submodules: true
 
-    - name: Initialize CodeQL
-      uses: github/codeql-action/init@v3
-      with:
-        languages: cpp
-        queries: security-extended
+      - name: Use HTTPS for GitHub (CI runners have no SSH key)
+        run: git config --global url."https://github.com/".insteadOf "git@github.com:"
 
-    - name: Build (for CodeQL)
-      run: |
-        sudo apt-get update
-        sudo apt-get install -y build-essential cmake
-        cmake -B build -S . -DCMAKE_BUILD_TYPE=Release -DVNE_TEMPLATE_CI=ON -DWARNINGS_AS_ERRORS=OFF
-        cmake --build build --config Release --parallel
+      - name: Init nested submodules
+        run: |
+          for dep in deps/internal/vnelogging deps/internal/vnecommon; do
+            if [ -d "$dep/.git" ]; then
+              git -C "$dep" submodule update --init --recursive
+            fi
+          done
 
-    - name: Perform CodeQL Analysis
-      uses: github/codeql-action/analyze@v3
-      with:
-        category: "/language:cpp"
+      # Warm the cache from whatever ci.yml left for linux-gcc-Release.
+      # On cache miss, CodeQL builds from scratch — still correct.
+      - name: Cache CMake build (CodeQL)
+        uses: actions/cache@v4
+        with:
+          path: build
+          key: build-linux-gcc-Release-${{ hashFiles('CMakeLists.txt', '**/CMakeLists.txt', '.gitmodules', 'cmake/vnecmake/.git/HEAD', 'deps/internal/vnecommon/.git/HEAD', 'deps/internal/vnelogging/.git/HEAD') }}
+          restore-keys: |
+            build-linux-gcc-Release-
+            build-linux-gcc-
+
+      - name: Install build dependencies
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y build-essential cmake
+
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@v3
+        with:
+          languages: cpp
+          queries: security-extended
+
+      - name: Build (traced by CodeQL)
+        run: |
+          cmake -B build -S . \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DVNE_TEMPLATE_CI=ON \
+            -DWARNINGS_AS_ERRORS=OFF
+          cmake --build build --config Release --parallel
+
+      - name: Perform CodeQL Analysis
+        uses: github/codeql-action/analyze@v3
+        with:
+          category: "/language:cpp"

@@ -1,0 +1,205 @@
+# ----------------------------------------------------------------------
+# Copyright (c) 2026 Ajeet Singh Yadav. All rights reserved.
+# Licensed under the Apache License, Version 2.0 (the "License")
+#
+# Author:    Ajeet Singh Yadav
+# Created:   March 2026
+#
+# Reusable workflow: configure, build, test, and optionally collect
+# coverage for one platform. Called by ci.yml and release-please.yml.
+# ----------------------------------------------------------------------
+
+name: "Build and Test (Reusable)"
+
+on:
+  workflow_call:
+    inputs:
+      runner:
+        description: "GitHub-hosted runner label (e.g. ubuntu-latest)"
+        required: true
+        type: string
+      c_compiler:
+        description: "C compiler to use (empty = runner default)"
+        required: false
+        type: string
+        default: ""
+      cpp_compiler:
+        description: "C++ compiler to use (empty = runner default)"
+        required: false
+        type: string
+        default: ""
+      platform:
+        description: "Platform identifier used as cache key discriminator"
+        required: true
+        type: string
+      build_type:
+        description: "CMake build type: Release or Debug"
+        required: false
+        type: string
+        default: "Release"
+      enable_coverage:
+        description: "Enable lcov coverage collection and Codecov upload"
+        required: false
+        type: boolean
+        default: false
+      warnings_as_errors:
+        description: "Enable -DWARNINGS_AS_ERRORS=ON"
+        required: false
+        type: boolean
+        default: true
+    secrets:
+      codecov_token:
+        description: "Codecov upload token (required when enable_coverage is true)"
+        required: false
+
+permissions:
+  contents: read
+  checks: write
+
+jobs:
+  build-and-test:
+    name: "Build + Test (${{ inputs.platform }}, ${{ inputs.build_type }})"
+    runs-on: ${{ inputs.runner }}
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: true   # direct submodules only (vnecmake, googletest, vnecommon, vnelogging)
+
+      # ------------------------------------------------------------------
+      # Submodule cache — keyed on .gitmodules content + each submodule's
+      # checked-out HEAD SHA. A submodule pointer update invalidates this.
+      # ------------------------------------------------------------------
+      - name: Cache submodules
+        id: cache-submodules
+        uses: actions/cache@v4
+        with:
+          path: |
+            cmake/vnecmake
+            deps/external/googletest
+            deps/internal/vnecommon
+            deps/internal/vnelogging
+          key: submodules-${{ inputs.platform }}-${{ hashFiles('.gitmodules') }}-${{ hashFiles('cmake/vnecmake/.git/HEAD', 'deps/external/googletest/.git/HEAD', 'deps/internal/vnecommon/.git/HEAD', 'deps/internal/vnelogging/.git/HEAD') }}
+          restore-keys: |
+            submodules-${{ inputs.platform }}-${{ hashFiles('.gitmodules') }}-
+            submodules-${{ inputs.platform }}-
+
+      - name: Use HTTPS for GitHub (CI runners have no SSH key)
+        run: git config --global url."https://github.com/".insteadOf "git@github.com:"
+
+      - name: Init nested submodules (if cache miss)
+        if: steps.cache-submodules.outputs.cache-hit != 'true'
+        shell: bash
+        run: |
+          for dep in deps/internal/vnelogging deps/internal/vnecommon; do
+            if [ -d "$dep/.git" ]; then
+              git -C "$dep" submodule update --init --recursive
+            fi
+          done
+
+      # ------------------------------------------------------------------
+      # CMake build cache — includes submodule HEADs in key so a submodule
+      # pointer change correctly invalidates the build (not just source).
+      # ------------------------------------------------------------------
+      - name: Cache CMake build
+        uses: actions/cache@v4
+        with:
+          path: build
+          key: build-${{ inputs.platform }}-${{ inputs.build_type }}-${{ hashFiles('CMakeLists.txt', '**/CMakeLists.txt', '.gitmodules', 'cmake/vnecmake/.git/HEAD', 'deps/internal/vnecommon/.git/HEAD', 'deps/internal/vnelogging/.git/HEAD') }}
+          restore-keys: |
+            build-${{ inputs.platform }}-${{ inputs.build_type }}-
+            build-${{ inputs.platform }}-
+
+      - name: Install Linux build dependencies
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y build-essential cmake \
+            ${{ inputs.enable_coverage && 'lcov' || '' }}
+
+      # ------------------------------------------------------------------
+      # Configure
+      # ------------------------------------------------------------------
+      - name: Configure CMake
+        shell: bash
+        run: |
+          EXTRA_FLAGS=""
+          if [[ -n "${{ inputs.c_compiler }}" ]]; then
+            EXTRA_FLAGS="$EXTRA_FLAGS -DCMAKE_C_COMPILER=${{ inputs.c_compiler }}"
+            EXTRA_FLAGS="$EXTRA_FLAGS -DCMAKE_CXX_COMPILER=${{ inputs.cpp_compiler }}"
+          fi
+          if [[ "${{ inputs.enable_coverage }}" == "true" ]]; then
+            EXTRA_FLAGS="$EXTRA_FLAGS -DENABLE_COVERAGE=ON -DCMAKE_BUILD_TYPE=Debug"
+          fi
+          cmake -B build -S . \
+            -DCMAKE_BUILD_TYPE=${{ inputs.build_type }} \
+            -DVNE_TEMPLATE_CI=ON \
+            -DWARNINGS_AS_ERRORS=${{ inputs.warnings_as_errors && 'ON' || 'OFF' }} \
+            -DCMAKE_EXPORT_COMPILE_COMMANDS=ON \
+            $EXTRA_FLAGS
+
+      - name: Build
+        shell: bash
+        run: cmake --build build --config ${{ inputs.build_type }} --parallel
+
+      # ------------------------------------------------------------------
+      # Test — JUnit XML output for inline PR annotations
+      # Note: --output-junit requires CMake 3.21+; ubuntu-latest ships 3.22+
+      # ------------------------------------------------------------------
+      - name: Test
+        shell: bash
+        working-directory: build
+        run: |
+          ctest \
+            --output-on-failure \
+            --output-junit test-results.xml \
+            -C ${{ inputs.build_type }}
+
+      - name: Publish test results
+        uses: mikepenz/action-junit-report@v4
+        if: always()
+        with:
+          report_paths: "build/test-results.xml"
+          check_name: "Tests (${{ inputs.platform }}, ${{ inputs.build_type }})"
+          fail_on_failure: true
+
+      - name: Write test summary
+        if: always()
+        shell: bash
+        run: |
+          echo "## Test Results: ${{ inputs.platform }} (${{ inputs.build_type }})" >> "$GITHUB_STEP_SUMMARY"
+          if [ -f build/test-results.xml ]; then
+            TOTAL=$(grep -o 'tests="[0-9]*"' build/test-results.xml | head -1 | grep -o '[0-9]*' || echo "?")
+            FAIL=$(grep -o 'failures="[0-9]*"' build/test-results.xml | head -1 | grep -o '[0-9]*' || echo "?")
+            if [[ "$TOTAL" != "?" && "$FAIL" != "?" ]]; then
+              echo "Passed: $((TOTAL - FAIL)) / $TOTAL" >> "$GITHUB_STEP_SUMMARY"
+            else
+              echo "Could not parse test-results.xml" >> "$GITHUB_STEP_SUMMARY"
+            fi
+          else
+            echo "No test-results.xml found" >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+      # ------------------------------------------------------------------
+      # Coverage (Linux/GCC only, controlled by enable_coverage input)
+      # ------------------------------------------------------------------
+      - name: Generate lcov coverage report
+        if: inputs.enable_coverage
+        run: |
+          lcov --capture --directory build --output-file coverage.info \
+            --ignore-errors mismatch,unused
+          lcov --remove coverage.info \
+            '/usr/*' '*/tests/*' '*/deps/external/*' '*/deps/internal/*' \
+            '*/_deps/*' '*/googletest/*' '*/googlemock/*' \
+            --output-file coverage.info --ignore-errors mismatch,unused
+          lcov --list coverage.info --ignore-errors mismatch,unused
+
+      - name: Upload coverage to Codecov
+        if: inputs.enable_coverage
+        uses: codecov/codecov-action@v5
+        with:
+          token: ${{ secrets.codecov_token }}
+          files: ./coverage.info
+          fail_ci_if_error: false
+          verbose: true
+          flags: ${{ inputs.platform }}

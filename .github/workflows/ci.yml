@@ -5,271 +5,319 @@
 # Author:    Ajeet Singh Yadav
 # Created:   February 2026
 #
-# Autodoc:   yes
+# CI pipeline — staged, gated, with concurrency cancellation.
+#
+# Stage 1 — Pre-checks  : clang-format, commit-lint (fail-fast gate)
+# Stage 2+3 — Build+Test: Linux GCC/Clang, macOS, Windows (parallel)
+# Stage 4 — Analysis    : clang-tidy (reuses Clang build cache)
+# Stage 5 — CI Gate     : single required status check for branch protection
+#
+# Branch protection: require only "CI Gate" — not individual job names.
 # ----------------------------------------------------------------------
 
 name: CI
 
 on:
   push:
-    branches: [ "main" ]
+    branches: ["main"]
     paths-ignore:
       - "CHANGELOG.md"
       - "VERSION"
       - ".release-please-manifest.json"
       - ".github/release-please-config.json"
+      - "docs/**"
+      - "*.md"
   pull_request:
-    branches: [ "main" ]
+    branches: ["main"]
+
+# Cancel stale runs on the same branch/PR — saves runner minutes.
+# github.ref is unique per PR branch and per push-to-main.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+  checks: write        # for test result annotations (mikepenz/action-junit-report)
+  pull-requests: write # for step summaries on PRs
 
 jobs:
-  clang-format:
+  # ====================================================================
+  # STAGE 1: PRE-CHECKS (fail-fast gate)
+  # These jobs do NOT clone submodules — they only need source files.
+  # If any pre-check fails the gate blocks all downstream builds.
+  # ====================================================================
+
+  format-check:
+    name: "Pre-checks / clang-format"
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     steps:
-    - uses: actions/checkout@v4
-      with:
-        submodules: recursive
+      - uses: actions/checkout@v4
+        with:
+          submodules: false   # clang-format only reads src/ include/ — no deps needed
 
-    - name: Install clang-format
-      run: sudo apt-get update && sudo apt-get install -y clang-format
+      - name: Install clang-format
+        run: sudo apt-get update -qq && sudo apt-get install -y clang-format
 
-    - name: Check formatting (uses project .clang-format, no file modifications)
-      run: |
-        find src include examples tests -type f \( -name '*.h' -o -name '*.cpp' -o -name '*.hpp' -o -name '*.c' \) \
-          -print0 | xargs -0 -r clang-format --dry-run --Werror --style=file --fallback-style=Google
+      - name: Check formatting (uses project .clang-format, no modifications)
+        run: |
+          find src include examples tests \
+            -type f \( -name '*.h' -o -name '*.hpp' -o -name '*.cpp' -o -name '*.c' \) \
+            -print0 \
+          | xargs -0 -r clang-format --dry-run --Werror \
+              --style=file --fallback-style=Google
 
-  linux:
+  commit-lint:
+    name: "Pre-checks / commit messages"
     runs-on: ubuntu-latest
-    strategy:
-      fail-fast: false
-      matrix:
-        compiler: [gcc, clang]
-        include:
-          - compiler: gcc
-            c_compiler: gcc
-            cpp_compiler: g++
-          - compiler: clang
-            c_compiler: clang
-            cpp_compiler: clang++
-
+    # Only validate on PRs. Push-to-main arrives as release-please merge
+    # commits (chore(main): release X.Y.Z) which are always valid — and
+    # validating every commit in a merge-commit ancestry is fragile.
+    if: github.event_name == 'pull_request'
+    permissions:
+      contents: read
+      pull-requests: read
     steps:
-    - uses: actions/checkout@v4
-      with:
-        submodules: true  # Only direct submodules, not recursive (avoids nested deps conflict)
+      - uses: actions/checkout@v4
+        with:
+          submodules: false
+          fetch-depth: 0   # full history needed to enumerate PR commits
 
-    - name: Cache CMake build
-      uses: actions/cache@v4
-      with:
-        path: build
-        key: linux-${{ matrix.compiler }}-${{ hashFiles('CMakeLists.txt', '**/CMakeLists.txt') }}
-        restore-keys: linux-${{ matrix.compiler }}-
+      - name: Validate Conventional Commits format
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          PATTERN='^(feat|fix|docs|style|refactor|perf|test|build|ci|chore|revert)(\(.+\))?(!)?: .+$'
+          FAILED=0
+          while IFS= read -r msg; do
+            if ! echo "$msg" | grep -qP "$PATTERN"; then
+              echo "::error::Bad commit message: $msg"
+              echo "  Expected: type(scope?): description"
+              echo "  Valid types: feat fix docs style refactor perf test build ci chore revert"
+              FAILED=1
+            fi
+          done < <(git log --format="%s" "${BASE_SHA}..${HEAD_SHA}")
+          if [[ $FAILED -eq 1 ]]; then
+            echo "One or more commits do not follow Conventional Commits format."
+            exit 1
+          fi
+          echo "All commits follow Conventional Commits format."
 
-    - name: Use HTTPS for GitHub (no SSH keys on runner)
-      run: git config --global url."https://github.com/".insteadOf "git@github.com:"
-
-    - name: Init vnemath submodules (HTTPS for CI)
-      run: |
-        if [ -d deps/internal/vnemath/.git ]; then
-          cd deps/internal/vnemath
-          git config submodule.cmake/vnecmake.url https://github.com/vertexnova/vnecmake.git
-          git config submodule.deps/internal/vnecommon.url https://github.com/vertexnova/vnecommon.git
-          git config submodule.deps/internal/vnelogging.url https://github.com/vertexnova/vnelogging.git
-          git submodule update --init --recursive
-        fi
-
-    - name: Install dependencies
-      run: |
-        sudo apt-get update
-        sudo apt-get install -y build-essential cmake
-
-    - name: Configure CMake
-      run: |
-        cmake -B build -S . \
-          -DCMAKE_BUILD_TYPE=Release \
-          -DCMAKE_C_COMPILER=${{ matrix.c_compiler }} \
-          -DCMAKE_CXX_COMPILER=${{ matrix.cpp_compiler }} \
-          -DVNE_TEMPLATE_CI=ON
-
-    - name: Build
-      run: cmake --build build --config Release --parallel
-
-    - name: Test
-      working-directory: build
-      run: ctest --output-on-failure
-
-  coverage:
+  # Logical AND gate: build jobs declare `needs: [pre-checks-gate]` so
+  # they only run after BOTH format-check AND commit-lint have passed
+  # (or commit-lint was legitimately skipped on a push event).
+  pre-checks-gate:
+    name: "Pre-checks gate"
     runs-on: ubuntu-latest
+    needs: [format-check, commit-lint]
+    if: always()
     steps:
-    - uses: actions/checkout@v4
-      with:
-        submodules: recursive
+      - name: Verify all pre-checks passed
+        run: |
+          FORMAT="${{ needs.format-check.result }}"
+          LINT="${{ needs.commit-lint.result }}"
+          EVENT="${{ github.event_name }}"
 
-    - name: Install dependencies
-      run: |
-        sudo apt-get update
-        sudo apt-get install -y build-essential cmake lcov
+          if [[ "$FORMAT" != "success" ]]; then
+            echo "::error::format-check did not pass (result: $FORMAT)"
+            exit 1
+          fi
 
-    - name: Configure CMake with Coverage
-      run: |
-        cmake -B build -S . \
-          -DCMAKE_BUILD_TYPE=Debug \
-          -DCMAKE_C_COMPILER=gcc \
-          -DCMAKE_CXX_COMPILER=g++ \
-          -DVNE_TEMPLATE_CI=ON \
-          -DWARNINGS_AS_ERRORS=ON \
-          -DENABLE_COVERAGE=ON
+          # commit-lint is skipped on push events — that is expected and OK.
+          if [[ "$EVENT" == "pull_request" && "$LINT" != "success" ]]; then
+            echo "::error::commit-lint did not pass (result: $LINT)"
+            exit 1
+          fi
 
-    - name: Build
-      run: cmake --build build --config Debug --parallel
+          echo "All pre-checks passed."
 
-    - name: Test
-      working-directory: build
-      run: ctest --output-on-failure
+  # ====================================================================
+  # STAGE 2+3: BUILD + TEST (parallel across platforms)
+  # All jobs delegate to build-reusable.yml to eliminate boilerplate.
+  # ====================================================================
 
-    - name: Generate Coverage Report
-      run: |
-        lcov --capture --directory build --output-file coverage.info --ignore-errors mismatch,unused
-        lcov --remove coverage.info \
-          '/usr/*' \
-          '*/tests/*' \
-          '*/deps/external/*' \
-          '*/deps/internal/*' \
-          '*/_deps/*' \
-          '*/googletest/*' \
-          '*/googlemock/*' \
-          --output-file coverage.info --ignore-errors mismatch,unused
-        lcov --list coverage.info --ignore-errors mismatch,unused
+  build-linux-gcc:
+    name: "Build+Test / Linux GCC"
+    needs: [pre-checks-gate]
+    uses: ./.github/workflows/build-reusable.yml
+    with:
+      runner:             ubuntu-latest
+      c_compiler:         gcc
+      cpp_compiler:       g++
+      platform:           linux-gcc
+      build_type:         Release
+      enable_coverage:    true
+      warnings_as_errors: true
+    secrets:
+      codecov_token: ${{ secrets.CODECOV_TOKEN }}
 
-    - name: Upload coverage reports to Codecov
-      uses: codecov/codecov-action@v5
-      with:
-        token: ${{ secrets.CODECOV_TOKEN_VNETEMPLATE }}
-        files: ./coverage.info
-        fail_ci_if_error: false
-        verbose: true
+  build-linux-clang:
+    name: "Build+Test / Linux Clang"
+    needs: [pre-checks-gate]
+    uses: ./.github/workflows/build-reusable.yml
+    with:
+      runner:             ubuntu-latest
+      c_compiler:         clang
+      cpp_compiler:       clang++
+      platform:           linux-clang
+      build_type:         Release
+      enable_coverage:    false
+      warnings_as_errors: true
+    secrets: inherit
 
-  macos:
-    runs-on: macos-latest
+  build-macos:
+    name: "Build+Test / macOS"
+    needs: [pre-checks-gate]
+    uses: ./.github/workflows/build-reusable.yml
+    with:
+      runner:             macos-latest
+      c_compiler:         ""
+      cpp_compiler:       ""
+      platform:           macos
+      build_type:         Release
+      enable_coverage:    false
+      warnings_as_errors: true
+    secrets: inherit
 
-    steps:
-    - uses: actions/checkout@v4
-      with:
-        submodules: true  # Only direct submodules, not recursive (avoids nested deps conflict)
+  build-windows:
+    name: "Build+Test / Windows"
+    needs: [pre-checks-gate]
+    uses: ./.github/workflows/build-reusable.yml
+    with:
+      runner:             windows-latest
+      c_compiler:         ""
+      cpp_compiler:       ""
+      platform:           windows
+      build_type:         Release
+      enable_coverage:    false
+      warnings_as_errors: true
+    secrets: inherit
 
-    - name: Cache CMake build
-      uses: actions/cache@v4
-      with:
-        path: build
-        key: macos-${{ hashFiles('CMakeLists.txt', '**/CMakeLists.txt') }}
-        restore-keys: macos-
-
-    - name: Use HTTPS for GitHub (no SSH keys on runner)
-      run: git config --global url."https://github.com/".insteadOf "git@github.com:"
-
-    - name: Init vnemath submodules (HTTPS for CI)
-      run: |
-        if [ -d deps/internal/vnemath/.git ]; then
-          cd deps/internal/vnemath
-          git config submodule.cmake/vnecmake.url https://github.com/vertexnova/vnecmake.git
-          git config submodule.deps/internal/vnecommon.url https://github.com/vertexnova/vnecommon.git
-          git config submodule.deps/internal/vnelogging.url https://github.com/vertexnova/vnelogging.git
-          git submodule update --init --recursive
-        fi
-
-    - name: Configure CMake
-      run: |
-        cmake -B build -S . \
-          -DCMAKE_BUILD_TYPE=Release \
-          -DVNE_TEMPLATE_CI=ON \
-          -DWARNINGS_AS_ERRORS=ON
-
-    - name: Build
-      run: cmake --build build --config Release --parallel
-
-    - name: Test
-      working-directory: build
-      run: ctest --output-on-failure
-
-  windows:
-    runs-on: windows-latest
-
-    steps:
-    - uses: actions/checkout@v4
-      with:
-        submodules: true  # Only direct submodules, not recursive (avoids nested deps conflict)
-
-    - name: Cache CMake build
-      uses: actions/cache@v4
-      with:
-        path: build
-        key: windows-${{ hashFiles('CMakeLists.txt', '**/CMakeLists.txt') }}
-        restore-keys: windows-
-
-    - name: Use HTTPS for GitHub (no SSH keys on runner)
-      run: git config --global url."https://github.com/".insteadOf "git@github.com:"
-
-    - name: Init vnemath submodules (HTTPS for CI)
-      run: |
-        if (Test-Path deps/internal/vnemath/.git) {
-          Push-Location deps/internal/vnemath
-          git config submodule.cmake/vnecmake.url https://github.com/vertexnova/vnecmake.git
-          git config submodule.deps/internal/vnecommon.url https://github.com/vertexnova/vnecommon.git
-          git config submodule.deps/internal/vnelogging.url https://github.com/vertexnova/vnelogging.git
-          git submodule update --init --recursive
-          Pop-Location
-        }
-
-    - name: Configure CMake
-      run: |
-        cmake -B build -S . `
-          -DCMAKE_BUILD_TYPE=Release `
-          -DVNE_TEMPLATE_CI=ON `
-          -DWARNINGS_AS_ERRORS=ON
-
-    - name: Build
-      run: cmake --build build --config Release --parallel
-
-    - name: Test
-      working-directory: build
-      run: ctest --output-on-failure -C Release
+  # ====================================================================
+  # STAGE 4: STATIC ANALYSIS
+  # clang-tidy runs after the Clang build so it can reuse the
+  # compile_commands.json from the cached build directory.
+  # ====================================================================
 
   clang-tidy:
+    name: "Analysis / clang-tidy"
     runs-on: ubuntu-latest
+    needs: [build-linux-clang]
+    permissions:
+      contents: read
+
     steps:
-    - uses: actions/checkout@v4
-      with:
-        submodules: true  # Only direct submodules, not recursive (avoids nested deps conflict)
+      - uses: actions/checkout@v4
+        with:
+          submodules: true
 
-    - name: Use HTTPS for GitHub (no SSH keys on runner)
-      run: git config --global url."https://github.com/".insteadOf "git@github.com:"
+      - name: Use HTTPS for GitHub (CI runners have no SSH key)
+        run: git config --global url."https://github.com/".insteadOf "git@github.com:"
 
-    - name: Init vnemath submodules (HTTPS for CI)
-      run: |
-        if [ -d deps/internal/vnemath/.git ]; then
-          cd deps/internal/vnemath
-          git config submodule.cmake/vnecmake.url https://github.com/vertexnova/vnecmake.git
-          git config submodule.deps/internal/vnecommon.url https://github.com/vertexnova/vnecommon.git
-          git config submodule.deps/internal/vnelogging.url https://github.com/vertexnova/vnelogging.git
-          git submodule update --init --recursive
-        fi
+      - name: Init nested submodules
+        run: |
+          for dep in deps/internal/vnelogging deps/internal/vnecommon; do
+            if [ -d "$dep/.git" ]; then
+              git -C "$dep" submodule update --init --recursive
+            fi
+          done
 
-    - name: Install dependencies
-      run: |
-        sudo apt-get update
-        sudo apt-get install -y build-essential cmake clang clang-tidy
+      # Restore the Clang Release build cache written by build-linux-clang.
+      # Same key as build-reusable.yml for linux-clang/Release.
+      - name: Restore CMake build cache (Clang)
+        uses: actions/cache@v4
+        with:
+          path: build
+          key: build-linux-clang-Release-${{ hashFiles('CMakeLists.txt', '**/CMakeLists.txt', '.gitmodules', 'cmake/vnecmake/.git/HEAD', 'deps/internal/vnecommon/.git/HEAD', 'deps/internal/vnelogging/.git/HEAD') }}
+          restore-keys: |
+            build-linux-clang-Release-
+            build-linux-clang-
 
-    - name: Configure CMake
-      run: |
-        cmake -B build -S . \
-          -DCMAKE_BUILD_TYPE=Release \
-          -DCMAKE_C_COMPILER=clang \
-          -DCMAKE_CXX_COMPILER=clang++ \
-          -DVNE_TEMPLATE_CI=ON \
-          -DWARNINGS_AS_ERRORS=ON
+      - name: Install clang and clang-tidy
+        run: sudo apt-get update -qq && sudo apt-get install -y build-essential cmake clang clang-tidy
 
-    - name: Build
-      run: cmake --build build --config Release --parallel
+      # Reconfigure only if the cache was missing (compile_commands.json needed).
+      - name: Configure CMake (cache miss fallback)
+        run: |
+          if [ ! -f build/compile_commands.json ]; then
+            cmake -B build -S . \
+              -DCMAKE_BUILD_TYPE=Release \
+              -DCMAKE_C_COMPILER=clang \
+              -DCMAKE_CXX_COMPILER=clang++ \
+              -DVNE_TEMPLATE_CI=ON \
+              -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
+            cmake --build build --config Release --parallel
+          fi
 
-    - name: Run clang-tidy (project .clang-tidy)
-      run: |
-        find src -type f \( -name '*.cpp' -o -name '*.h' \) -print0 \
-          | xargs -0 -r clang-tidy -p build
+      - name: Run clang-tidy
+        run: |
+          find src -type f \( -name '*.cpp' -o -name '*.h' \) -print0 \
+            | xargs -0 -r clang-tidy -p build \
+                --warnings-as-errors='*'
+
+      - name: Write clang-tidy summary
+        if: always()
+        run: |
+          echo "## clang-tidy" >> "$GITHUB_STEP_SUMMARY"
+          echo "Analyzed \`src/\` using Clang compile database (\`build/compile_commands.json\`)" >> "$GITHUB_STEP_SUMMARY"
+
+  # ====================================================================
+  # STAGE 5: CI GATE
+  # Single required status check. Branch protection should require only
+  # this job — not the individual build job names. This ensures the
+  # required check name stays stable even as build jobs are renamed.
+  # ====================================================================
+
+  ci-gate:
+    name: "CI Gate"
+    runs-on: ubuntu-latest
+    if: always()
+    needs:
+      - pre-checks-gate
+      - build-linux-gcc
+      - build-linux-clang
+      - build-macos
+      - build-windows
+      - clang-tidy
+
+    steps:
+      - name: Check all required jobs passed
+        run: |
+          RESULTS=(
+            "pre-checks-gate=${{ needs.pre-checks-gate.result }}"
+            "build-linux-gcc=${{ needs.build-linux-gcc.result }}"
+            "build-linux-clang=${{ needs.build-linux-clang.result }}"
+            "build-macos=${{ needs.build-macos.result }}"
+            "build-windows=${{ needs.build-windows.result }}"
+            "clang-tidy=${{ needs.clang-tidy.result }}"
+          )
+          FAILED=0
+          for entry in "${RESULTS[@]}"; do
+            JOB="${entry%%=*}"
+            RESULT="${entry##*=}"
+            if [[ "$RESULT" != "success" && "$RESULT" != "skipped" ]]; then
+              echo "::error::Job '$JOB' did not pass (result: $RESULT)"
+              FAILED=1
+            fi
+          done
+          if [[ $FAILED -eq 1 ]]; then
+            exit 1
+          fi
+          echo "All CI jobs passed."
+
+      - name: Write pipeline summary
+        if: always()
+        run: |
+          echo "# CI Pipeline Summary" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "| Job | Result |" >> "$GITHUB_STEP_SUMMARY"
+          echo "|-----|--------|" >> "$GITHUB_STEP_SUMMARY"
+          echo "| pre-checks-gate   | ${{ needs.pre-checks-gate.result }}   |" >> "$GITHUB_STEP_SUMMARY"
+          echo "| build-linux-gcc   | ${{ needs.build-linux-gcc.result }}   |" >> "$GITHUB_STEP_SUMMARY"
+          echo "| build-linux-clang | ${{ needs.build-linux-clang.result }} |" >> "$GITHUB_STEP_SUMMARY"
+          echo "| build-macos       | ${{ needs.build-macos.result }}       |" >> "$GITHUB_STEP_SUMMARY"
+          echo "| build-windows     | ${{ needs.build-windows.result }}     |" >> "$GITHUB_STEP_SUMMARY"
+          echo "| clang-tidy        | ${{ needs.clang-tidy.result }}        |" >> "$GITHUB_STEP_SUMMARY"
