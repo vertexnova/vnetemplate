@@ -206,6 +206,14 @@ jobs:
           check_name: "Tests (${{ inputs.platform }}, ${{ env.EFFECTIVE_BUILD_TYPE }})"
           fail_on_failure: true
 
+      - name: Upload test results
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: test-results-${{ inputs.platform }}-${{ env.EFFECTIVE_BUILD_TYPE }}
+          path: build/test-results.xml
+          retention-days: 7
+
       - name: Write test summary
         if: always()
         shell: bash
@@ -236,6 +244,18 @@ jobs:
             '*/_deps/*' '*/googletest/*' '*/googlemock/*' \
             --output-file coverage.info --ignore-errors mismatch,unused
           lcov --list coverage.info --ignore-errors mismatch,unused
+
+      - name: Generate HTML coverage report
+        if: runner.os == 'Linux' && inputs.enable_coverage
+        run: genhtml coverage.info --output-directory coverage-html
+
+      - name: Upload coverage HTML
+        if: runner.os == 'Linux' && inputs.enable_coverage
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-report-${{ inputs.platform }}
+          path: coverage-html/
+          retention-days: 14
 
       - name: Upload coverage to Codecov
         if: runner.os == 'Linux' && inputs.enable_coverage

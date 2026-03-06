@@ -250,7 +250,8 @@ jobs:
             -DCMAKE_SYSTEM_NAME=iOS \
             -DCMAKE_OSX_ARCHITECTURES=arm64 \
             -DCMAKE_BUILD_TYPE=Release \
-            -DVNE_TEMPLATE_CI=ON
+            -DVNE_TEMPLATE_CI=ON \
+            -DVNE_TEMPLATE_TESTS=OFF   # Xcode requires bundle ID for test targets; build-only check
 
       - name: Build
         run: cmake --build build --config Release --parallel

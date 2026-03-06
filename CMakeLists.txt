@@ -215,9 +215,13 @@ if(ENABLE_ASAN)
 endif()
 
 if(VNE_TEMPLATE_CI)
-    set(VNE_TEMPLATE_TESTS ON CACHE BOOL "" FORCE)
+    # CI enables tests by default, but allow explicit -DVNE_TEMPLATE_TESTS=OFF to override
+    # (e.g. iOS/Android cross-compile builds: Xcode requires bundle ID for test targets).
+    if(NOT DEFINED VNE_TEMPLATE_TESTS OR VNE_TEMPLATE_TESTS)
+        set(VNE_TEMPLATE_TESTS ON CACHE BOOL "" FORCE)
+    endif()
     set(VNE_TEMPLATE_EXAMPLES OFF CACHE BOOL "" FORCE)
-    message(STATUS "VneTemplate: CI build -> VNE_TEMPLATE_TESTS=ON, VNE_TEMPLATE_EXAMPLES=OFF")
+    message(STATUS "VneTemplate: CI build -> VNE_TEMPLATE_TESTS=${VNE_TEMPLATE_TESTS}, VNE_TEMPLATE_EXAMPLES=OFF")
 elseif(VNE_TEMPLATE_DEV)
     set(VNE_TEMPLATE_TESTS ON CACHE BOOL "" FORCE)
     set(VNE_TEMPLATE_EXAMPLES ON CACHE BOOL "" FORCE)
