@@ -213,6 +213,7 @@ jobs:
       - name: Use HTTPS for GitHub (CI runners have no SSH key)
         run: git config --global url."https://github.com/".insteadOf "git@github.com:"
 
+      # Submodules fetched here; not cached (cache after checkout would not reduce fetch cost).
       - uses: actions/checkout@v4
         with:
           submodules: recursive

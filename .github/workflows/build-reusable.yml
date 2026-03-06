@@ -6,7 +6,8 @@
 # Created:   March 2026
 #
 # Description: Reusable workflow: configure, build, test, and optionally
-# collect coverage for one platform. Called by ci.yml and release-please.yml.
+# collect coverage for one platform. Called only by ci.yml. (release-please.yml
+# builds and publishes release artifacts in its own job and does not use this.)
 #
 # Autodoc:   yes
 # ----------------------------------------------------------------------
@@ -40,7 +41,7 @@ on:
         type: string
         default: "Release"
       enable_coverage:
-        description: "Enable lcov coverage collection and Codecov upload"
+        description: "Enable lcov coverage collection and Codecov upload (Linux only; no-op on macOS/Windows)"
         required: false
         type: boolean
         default: false
@@ -67,20 +68,22 @@ jobs:
       - name: Use HTTPS for GitHub (CI runners have no SSH key)
         run: git config --global url."https://github.com/".insteadOf "git@github.com:"
 
+      # Submodules are fetched here; we do not cache them (a cache restored
+      # after checkout would not reduce fetch cost). We rely on the build cache only.
       - uses: actions/checkout@v4
         with:
           submodules: recursive
 
       # ------------------------------------------------------------------
-      # CMake build cache — coverage builds use "Debug-coverage" as the
-      # type discriminator so they never restore from a Release cache
-      # (Release object files lack --coverage instrumentation).
+      # Single effective build type: always inputs.build_type (CI runs Release only).
+      # Coverage uses Release + --coverage; cache key adds -coverage when enabled.
       # ------------------------------------------------------------------
-      - name: Set cache build type key
+      - name: Set effective build type and cache key
         shell: bash
         run: |
+          echo "EFFECTIVE_BUILD_TYPE=${{ inputs.build_type }}" >> "$GITHUB_ENV"
           if [[ "${{ inputs.enable_coverage }}" == "true" ]]; then
-            echo "CACHE_BUILD_TYPE=Debug-coverage" >> "$GITHUB_ENV"
+            echo "CACHE_BUILD_TYPE=${{ inputs.build_type }}-coverage" >> "$GITHUB_ENV"
           else
             echo "CACHE_BUILD_TYPE=${{ inputs.build_type }}" >> "$GITHUB_ENV"
           fi
@@ -110,20 +113,14 @@ jobs:
         run: rm -rf build
 
       # ------------------------------------------------------------------
-      # Configure
-      # Coverage requires Debug + ENABLE_COVERAGE=ON to emit .gcda files.
-      # Compute effective build type first so build/test/ctest all agree.
+      # Configure — use EFFECTIVE_BUILD_TYPE from previous step (single source of truth).
       # ------------------------------------------------------------------
       - name: Configure CMake
         shell: bash
         run: |
-          # Coverage forces Debug regardless of inputs.build_type
+          COVERAGE_FLAG=""
           if [[ "${{ inputs.enable_coverage }}" == "true" ]]; then
-            BUILD_TYPE="Debug"
             COVERAGE_FLAG="-DENABLE_COVERAGE=ON"
-          else
-            BUILD_TYPE="${{ inputs.build_type }}"
-            COVERAGE_FLAG=""
           fi
 
           COMPILER_FLAGS=""
@@ -132,22 +129,19 @@ jobs:
           fi
 
           cmake -B build -S . \
-            -DCMAKE_BUILD_TYPE="${BUILD_TYPE}" \
+            -DCMAKE_BUILD_TYPE="$EFFECTIVE_BUILD_TYPE" \
             -DVNE_TEMPLATE_CI=ON \
             -DWARNINGS_AS_ERRORS=${{ inputs.warnings_as_errors && 'ON' || 'OFF' }} \
             -DCMAKE_EXPORT_COMPILE_COMMANDS=ON \
             ${COVERAGE_FLAG} \
             ${COMPILER_FLAGS}
 
-          # Save effective build type for downstream steps
-          echo "EFFECTIVE_BUILD_TYPE=${BUILD_TYPE}" >> "$GITHUB_ENV"
-
       - name: Build
         shell: bash
         run: cmake --build build --config "$EFFECTIVE_BUILD_TYPE" --parallel
 
-      - name: Verify coverage instrumentation (coverage builds only)
-        if: inputs.enable_coverage
+      - name: Verify coverage instrumentation (coverage builds only, Linux)
+        if: runner.os == 'Linux' && inputs.enable_coverage
         shell: bash
         run: |
           echo "--- .gcno files (produced at compile time) ---"
@@ -172,8 +166,8 @@ jobs:
             --output-junit test-results.xml \
             -C "$EFFECTIVE_BUILD_TYPE"
 
-      - name: Verify .gcda files emitted (coverage builds only)
-        if: inputs.enable_coverage
+      - name: Verify .gcda files emitted (coverage builds only, Linux)
+        if: runner.os == 'Linux' && inputs.enable_coverage
         shell: bash
         run: |
           echo "--- .gcda files (produced at test runtime) ---"
@@ -190,14 +184,14 @@ jobs:
         if: always()
         with:
           report_paths: "build/test-results.xml"
-          check_name: "Tests (${{ inputs.platform }}, ${{ inputs.build_type }})"
+          check_name: "Tests (${{ inputs.platform }}, ${{ env.EFFECTIVE_BUILD_TYPE }})"
           fail_on_failure: true
 
       - name: Write test summary
         if: always()
         shell: bash
         run: |
-          echo "## Test Results: ${{ inputs.platform }} (${{ inputs.build_type }})" >> "$GITHUB_STEP_SUMMARY"
+          echo "## Test Results: ${{ inputs.platform }} (${{ env.EFFECTIVE_BUILD_TYPE }})" >> "$GITHUB_STEP_SUMMARY"
           if [ -f build/test-results.xml ]; then
             TOTAL=$(grep -o 'tests="[0-9]*"' build/test-results.xml | head -1 | grep -o '[0-9]*' || echo "?")
             FAIL=$(grep -o 'failures="[0-9]*"' build/test-results.xml | head -1 | grep -o '[0-9]*' || echo "?")
@@ -211,10 +205,10 @@ jobs:
           fi
 
       # ------------------------------------------------------------------
-      # Coverage (Linux/GCC only, controlled by enable_coverage input)
+      # Coverage (Linux/GCC only; lcov/codecov run only on Linux)
       # ------------------------------------------------------------------
       - name: Generate lcov coverage report
-        if: inputs.enable_coverage
+        if: runner.os == 'Linux' && inputs.enable_coverage
         run: |
           lcov --capture --directory build --output-file coverage.info \
             --ignore-errors mismatch,unused,empty
@@ -225,7 +219,7 @@ jobs:
           lcov --list coverage.info --ignore-errors mismatch,unused
 
       - name: Upload coverage to Codecov
-        if: inputs.enable_coverage
+        if: runner.os == 'Linux' && inputs.enable_coverage
         uses: codecov/codecov-action@v5
         with:
           token: ${{ secrets.codecov_token }}

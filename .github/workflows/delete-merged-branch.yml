@@ -31,7 +31,7 @@ jobs:
     steps:
       - name: Delete branch
         env:
-          # secrets.GITHUB_TOKEN is not accessible via secrets.* — use github.token instead.
+          # Use REPO_ACCESS_TOKEN when set (e.g. when org restricts GITHUB_TOKEN); else default token.
           GH_TOKEN: ${{ secrets.REPO_ACCESS_TOKEN != '' && secrets.REPO_ACCESS_TOKEN || github.token }}
         run: |
           BRANCH="${{ github.event.pull_request.head.ref }}"

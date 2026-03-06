@@ -49,17 +49,9 @@ jobs:
         with:
           submodules: recursive
 
-      # Warm the cache from whatever ci.yml left for linux-gcc-Release.
-      # On cache miss, CodeQL builds from scratch — still correct.
-      - name: Cache CMake build (CodeQL)
-        uses: actions/cache@v4
-        with:
-          path: build
-          key: build-linux-gcc-Release-${{ hashFiles('CMakeLists.txt') }}-${{ hashFiles('**/CMakeLists.txt') }}-${{ hashFiles('.gitmodules') }}
-          restore-keys: |
-            build-linux-gcc-Release-
-            build-linux-gcc-
-
+      # No build cache: CodeQL must trace a full build. Restoring a cached build
+      # would let cmake --build skip most compilations, so CodeQL would miss
+      # compilation units and analysis would be incomplete.
       - name: Install build dependencies
         run: |
           sudo apt-get update -qq
