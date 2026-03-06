@@ -231,7 +231,7 @@ jobs:
         uses: actions/cache@v4
         with:
           path: build
-          key: build-linux-clang-Release-${{ hashFiles('CMakeLists.txt', '**/CMakeLists.txt', '.gitmodules', 'cmake/vnecmake/.git/HEAD', 'deps/internal/vnecommon/.git/HEAD', 'deps/internal/vnelogging/.git/HEAD') }}
+          key: build-linux-clang-Release-${{ hashFiles('CMakeLists.txt') }}-${{ hashFiles('**/CMakeLists.txt') }}-${{ hashFiles('.gitmodules') }}
           restore-keys: |
             build-linux-clang-Release-
             build-linux-clang-

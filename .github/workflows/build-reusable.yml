@@ -66,29 +66,10 @@ jobs:
         with:
           submodules: true   # direct submodules only (vnecmake, googletest, vnecommon, vnelogging)
 
-      # ------------------------------------------------------------------
-      # Submodule cache — keyed on .gitmodules content + each submodule's
-      # checked-out HEAD SHA. A submodule pointer update invalidates this.
-      # ------------------------------------------------------------------
-      - name: Cache submodules
-        id: cache-submodules
-        uses: actions/cache@v4
-        with:
-          path: |
-            cmake/vnecmake
-            deps/external/googletest
-            deps/internal/vnecommon
-            deps/internal/vnelogging
-          key: submodules-${{ inputs.platform }}-${{ hashFiles('.gitmodules') }}-${{ hashFiles('cmake/vnecmake/.git/HEAD', 'deps/external/googletest/.git/HEAD', 'deps/internal/vnecommon/.git/HEAD', 'deps/internal/vnelogging/.git/HEAD') }}
-          restore-keys: |
-            submodules-${{ inputs.platform }}-${{ hashFiles('.gitmodules') }}-
-            submodules-${{ inputs.platform }}-
-
       - name: Use HTTPS for GitHub (CI runners have no SSH key)
         run: git config --global url."https://github.com/".insteadOf "git@github.com:"
 
-      - name: Init nested submodules (if cache miss)
-        if: steps.cache-submodules.outputs.cache-hit != 'true'
+      - name: Init nested submodules
         shell: bash
         run: |
           for dep in deps/internal/vnelogging deps/internal/vnecommon; do
@@ -98,24 +79,25 @@ jobs:
           done
 
       # ------------------------------------------------------------------
-      # CMake build cache — includes submodule HEADs in key so a submodule
-      # pointer change correctly invalidates the build (not just source).
+      # CMake build cache — keyed on CMakeLists + .gitmodules content.
+      # hashFiles args must be separate quoted strings (not comma-joined).
       # ------------------------------------------------------------------
       - name: Cache CMake build
         uses: actions/cache@v4
         with:
           path: build
-          key: build-${{ inputs.platform }}-${{ inputs.build_type }}-${{ hashFiles('CMakeLists.txt', '**/CMakeLists.txt', '.gitmodules', 'cmake/vnecmake/.git/HEAD', 'deps/internal/vnecommon/.git/HEAD', 'deps/internal/vnelogging/.git/HEAD') }}
+          key: build-${{ inputs.platform }}-${{ inputs.build_type }}-${{ hashFiles('CMakeLists.txt') }}-${{ hashFiles('**/CMakeLists.txt') }}-${{ hashFiles('.gitmodules') }}
           restore-keys: |
             build-${{ inputs.platform }}-${{ inputs.build_type }}-
             build-${{ inputs.platform }}-
 
       - name: Install Linux build dependencies
         if: runner.os == 'Linux'
-        run: |
-          sudo apt-get update -qq
-          sudo apt-get install -y build-essential cmake \
-            ${{ inputs.enable_coverage && 'lcov' || '' }}
+        run: sudo apt-get update -qq && sudo apt-get install -y build-essential cmake
+
+      - name: Install lcov (coverage builds only)
+        if: runner.os == 'Linux' && inputs.enable_coverage
+        run: sudo apt-get install -y lcov
 
       # ------------------------------------------------------------------
       # Configure

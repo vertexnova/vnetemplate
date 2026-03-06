@@ -61,7 +61,7 @@ jobs:
         uses: actions/cache@v4
         with:
           path: build
-          key: build-linux-gcc-Release-${{ hashFiles('CMakeLists.txt', '**/CMakeLists.txt', '.gitmodules', 'cmake/vnecmake/.git/HEAD', 'deps/internal/vnecommon/.git/HEAD', 'deps/internal/vnelogging/.git/HEAD') }}
+          key: build-linux-gcc-Release-${{ hashFiles('CMakeLists.txt') }}-${{ hashFiles('**/CMakeLists.txt') }}-${{ hashFiles('.gitmodules') }}
           restore-keys: |
             build-linux-gcc-Release-
             build-linux-gcc-
