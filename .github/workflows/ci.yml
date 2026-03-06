@@ -224,7 +224,8 @@ jobs:
           cmake -B build -S . \
             -DCMAKE_TOOLCHAIN_FILE="$EMSDK/upstream/emscripten/cmake/Modules/Platform/Emscripten.cmake" \
             -DCMAKE_BUILD_TYPE=Release \
-            -DVNE_TEMPLATE_CI=ON
+            -DVNE_TEMPLATE_CI=ON \
+            -DVNE_TEMPLATE_TESTS=OFF   # wasm cannot link -lpthread or run natively; build-only check
 
       - name: Build
         run: cmake --build build --parallel
@@ -277,7 +278,8 @@ jobs:
             -DANDROID_ABI=arm64-v8a \
             -DANDROID_PLATFORM=android-24 \
             -DCMAKE_BUILD_TYPE=Release \
-            -DVNE_TEMPLATE_CI=ON
+            -DVNE_TEMPLATE_CI=ON \
+            -DVNE_TEMPLATE_TESTS=OFF   # Android binaries cannot run on the host runner; build-only check
 
       - name: Build
         run: cmake --build build --parallel
