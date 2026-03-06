@@ -100,6 +100,13 @@ jobs:
         if: runner.os == 'Linux' && inputs.enable_coverage
         run: sudo apt-get install -y lcov
 
+      # Coverage builds must start clean — cached Release objects lack
+      # --coverage instrumentation and CMake will not recompile them.
+      - name: Clean build directory (coverage only)
+        if: inputs.enable_coverage
+        shell: bash
+        run: rm -rf build
+
       # ------------------------------------------------------------------
       # Configure
       # Coverage requires Debug + ENABLE_COVERAGE=ON to emit .gcda files.
@@ -137,6 +144,19 @@ jobs:
         shell: bash
         run: cmake --build build --config "$EFFECTIVE_BUILD_TYPE" --parallel
 
+      - name: Verify coverage instrumentation (coverage builds only)
+        if: inputs.enable_coverage
+        shell: bash
+        run: |
+          echo "--- .gcno files (produced at compile time) ---"
+          find build -name "*.gcno" | head -20
+          GCNO_COUNT=$(find build -name "*.gcno" | wc -l)
+          echo "Total .gcno files: $GCNO_COUNT"
+          if [[ "$GCNO_COUNT" -eq 0 ]]; then
+            echo "::error::No .gcno files found — binary was not compiled with --coverage. Check ENABLE_COVERAGE and build type."
+            exit 1
+          fi
+
       # ------------------------------------------------------------------
       # Test — JUnit XML output for inline PR annotations
       # Note: --output-junit requires CMake 3.21+; ubuntu-latest ships 3.22+
@@ -149,6 +169,19 @@ jobs:
             --output-on-failure \
             --output-junit test-results.xml \
             -C "$EFFECTIVE_BUILD_TYPE"
+
+      - name: Verify .gcda files emitted (coverage builds only)
+        if: inputs.enable_coverage
+        shell: bash
+        run: |
+          echo "--- .gcda files (produced at test runtime) ---"
+          find build -name "*.gcda" | head -20
+          GCDA_COUNT=$(find build -name "*.gcda" | wc -l)
+          echo "Total .gcda files: $GCDA_COUNT"
+          if [[ "$GCDA_COUNT" -eq 0 ]]; then
+            echo "::error::No .gcda files found after running tests — tests may not have executed or binary not linked with --coverage."
+            exit 1
+          fi
 
       - name: Publish test results
         uses: mikepenz/action-junit-report@v4
