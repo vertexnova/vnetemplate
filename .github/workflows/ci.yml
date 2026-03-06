@@ -202,6 +202,33 @@ jobs:
       warnings_as_errors: true
     secrets: inherit
 
+  build-web:
+    name: "Build / Web (Emscripten)"
+    needs: [pre-checks-gate]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Use HTTPS for GitHub (CI runners have no SSH key)
+        run: git config --global url."https://github.com/".insteadOf "git@github.com:"
+
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Install Emscripten
+        uses: mymindstorm/setup-emscripten@v14
+
+      - name: Configure CMake (Emscripten)
+        run: |
+          cmake -B build -S . \
+            -DCMAKE_TOOLCHAIN_FILE="$EMSDK/upstream/emscripten/cmake/Modules/Platform/Emscripten.cmake" \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DVNE_TEMPLATE_CI=ON
+
+      - name: Build
+        run: cmake --build build --parallel
+
   build-linux-asan:
     name: "Build+Test / Linux ASan+UBSan"
     needs: [pre-checks-gate]
@@ -296,6 +323,7 @@ jobs:
       - build-linux-asan
       - build-macos
       - build-windows
+      - build-web
       - clang-tidy
 
     steps:
@@ -308,6 +336,7 @@ jobs:
             "build-linux-asan=${{ needs.build-linux-asan.result }}"
             "build-macos=${{ needs.build-macos.result }}"
             "build-windows=${{ needs.build-windows.result }}"
+            "build-web=${{ needs.build-web.result }}"
             "clang-tidy=${{ needs.clang-tidy.result }}"
           )
           FAILED=0
@@ -337,4 +366,5 @@ jobs:
           echo "| build-linux-asan  | ${{ needs.build-linux-asan.result }}  |" >> "$GITHUB_STEP_SUMMARY"
           echo "| build-macos       | ${{ needs.build-macos.result }}       |" >> "$GITHUB_STEP_SUMMARY"
           echo "| build-windows     | ${{ needs.build-windows.result }}     |" >> "$GITHUB_STEP_SUMMARY"
+          echo "| build-web         | ${{ needs.build-web.result }}         |" >> "$GITHUB_STEP_SUMMARY"
           echo "| clang-tidy        | ${{ needs.clang-tidy.result }}        |" >> "$GITHUB_STEP_SUMMARY"
