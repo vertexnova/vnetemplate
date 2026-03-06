@@ -101,28 +101,40 @@ jobs:
 
       # ------------------------------------------------------------------
       # Configure
+      # Coverage requires Debug + ENABLE_COVERAGE=ON to emit .gcda files.
+      # Compute effective build type first so build/test/ctest all agree.
       # ------------------------------------------------------------------
       - name: Configure CMake
         shell: bash
         run: |
-          EXTRA_FLAGS=""
-          if [[ -n "${{ inputs.c_compiler }}" ]]; then
-            EXTRA_FLAGS="$EXTRA_FLAGS -DCMAKE_C_COMPILER=${{ inputs.c_compiler }}"
-            EXTRA_FLAGS="$EXTRA_FLAGS -DCMAKE_CXX_COMPILER=${{ inputs.cpp_compiler }}"
-          fi
+          # Coverage forces Debug regardless of inputs.build_type
           if [[ "${{ inputs.enable_coverage }}" == "true" ]]; then
-            EXTRA_FLAGS="$EXTRA_FLAGS -DENABLE_COVERAGE=ON -DCMAKE_BUILD_TYPE=Debug"
+            BUILD_TYPE="Debug"
+            COVERAGE_FLAG="-DENABLE_COVERAGE=ON"
+          else
+            BUILD_TYPE="${{ inputs.build_type }}"
+            COVERAGE_FLAG=""
           fi
+
+          COMPILER_FLAGS=""
+          if [[ -n "${{ inputs.c_compiler }}" ]]; then
+            COMPILER_FLAGS="-DCMAKE_C_COMPILER=${{ inputs.c_compiler }} -DCMAKE_CXX_COMPILER=${{ inputs.cpp_compiler }}"
+          fi
+
           cmake -B build -S . \
-            -DCMAKE_BUILD_TYPE=${{ inputs.build_type }} \
+            -DCMAKE_BUILD_TYPE="${BUILD_TYPE}" \
             -DVNE_TEMPLATE_CI=ON \
             -DWARNINGS_AS_ERRORS=${{ inputs.warnings_as_errors && 'ON' || 'OFF' }} \
             -DCMAKE_EXPORT_COMPILE_COMMANDS=ON \
-            $EXTRA_FLAGS
+            ${COVERAGE_FLAG} \
+            ${COMPILER_FLAGS}
+
+          # Save effective build type for downstream steps
+          echo "EFFECTIVE_BUILD_TYPE=${BUILD_TYPE}" >> "$GITHUB_ENV"
 
       - name: Build
         shell: bash
-        run: cmake --build build --config ${{ inputs.build_type }} --parallel
+        run: cmake --build build --config "$EFFECTIVE_BUILD_TYPE" --parallel
 
       # ------------------------------------------------------------------
       # Test — JUnit XML output for inline PR annotations
@@ -135,7 +147,7 @@ jobs:
           ctest \
             --output-on-failure \
             --output-junit test-results.xml \
-            -C ${{ inputs.build_type }}
+            -C "$EFFECTIVE_BUILD_TYPE"
 
       - name: Publish test results
         uses: mikepenz/action-junit-report@v4
