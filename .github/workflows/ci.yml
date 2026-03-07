@@ -54,15 +54,34 @@ jobs:
       - uses: actions/checkout@v4
         with:
           submodules: false
+          fetch-depth: 2   # need parent to diff changed files
       - id: check
+        env:
+          ACTOR: ${{ github.actor }}
+          EVENT: ${{ github.event_name }}
         run: |
-          MSG="$(git log -1 --format='%s')"
-          if echo "$MSG" | grep -qE '^chore\(main\): release'; then
-            echo "is_release=true" >> "$GITHUB_OUTPUT"
-            echo "Release-please commit detected — skipping builds."
-          else
-            echo "is_release=false" >> "$GITHUB_OUTPUT"
+          IS_RELEASE=false
+
+          # Only relevant on push to main (PRs always build).
+          if [[ "$EVENT" == "push" ]]; then
+            # Signal 1: actor is the release-please bot.
+            ACTOR_MATCH=false
+            if [[ "$ACTOR" == "release-please[bot]" || "$ACTOR" == "github-actions[bot]" ]]; then
+              ACTOR_MATCH=true
+            fi
+
+            # Signal 2: changed files are exclusively release-please managed files.
+            CHANGED="$(git diff --name-only HEAD~1 HEAD 2>/dev/null || true)"
+            echo "Changed files: $CHANGED"
+            NON_RELEASE=$(echo "$CHANGED" | grep -vE '^(CHANGELOG\.md|VERSION|\.release-please-manifest\.json|release-please-config\.json)$' || true)
+
+            if [[ "$ACTOR_MATCH" == "true" && -z "$NON_RELEASE" && -n "$CHANGED" ]]; then
+              IS_RELEASE=true
+              echo "Release-please commit detected (actor: $ACTOR, files: $CHANGED) — skipping builds."
+            fi
           fi
+
+          echo "is_release=$IS_RELEASE" >> "$GITHUB_OUTPUT"
 
   # ====================================================================
   # STAGE 1: PRE-CHECKS (fail-fast gate)
