@@ -41,7 +41,8 @@ permissions:
 jobs:
   # ====================================================================
   # STAGE 0: DETECT RELEASE-PLEASE COMMITS
-  # Release-please merges only touch CHANGELOG.md and VERSION.
+  # Release-please merges only touch: CHANGELOG.md, VERSION,
+  # .release-please-manifest.json, release-please-config.json.
   # Skip all builds for those commits — CI already ran on the source PR.
   # ====================================================================
 
@@ -70,7 +71,8 @@ jobs:
               ACTOR_MATCH=true
             fi
 
-            # Signal 2: changed files are exclusively release-please managed files.
+            # Signal 2: changed files are exclusively release-please managed files
+            # (CHANGELOG.md, VERSION, .release-please-manifest.json, release-please-config.json).
             CHANGED="$(git diff --name-only HEAD~1 HEAD 2>/dev/null || true)"
             echo "Changed files: $CHANGED"
             NON_RELEASE=$(echo "$CHANGED" | grep -vE '^(CHANGELOG\.md|VERSION|\.release-please-manifest\.json|release-please-config\.json)$' || true)
