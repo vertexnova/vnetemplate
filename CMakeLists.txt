@@ -172,6 +172,12 @@ endif()
 
 option(VNE_TEMPLATE_TESTS "Build vnetemplate test suite (turn OFF when used as submodule)" ON)
 option(VNE_TEMPLATE_EXAMPLES "Build vnetemplate example programs (turn OFF when used as submodule)" OFF)
+set(VNE_TEMPLATE_LIB_TYPE "shared" CACHE STRING "Library type for vnetemplate: static or shared (one per build)")
+set_property(CACHE VNE_TEMPLATE_LIB_TYPE PROPERTY STRINGS "static" "shared")
+if(NOT VNE_TEMPLATE_LIB_TYPE STREQUAL "static" AND NOT VNE_TEMPLATE_LIB_TYPE STREQUAL "shared")
+    message(FATAL_ERROR
+        "VNE_TEMPLATE_LIB_TYPE must be 'static' or 'shared'. Got: ${VNE_TEMPLATE_LIB_TYPE}")
+endif()
 option(ENABLE_DOXYGEN "Enable Doxygen documentation builds" OFF)
 option(ENABLE_COVERAGE "Enable code coverage reporting" OFF)
 option(ENABLE_ASAN "Enable AddressSanitizer + UndefinedBehaviorSanitizer (Clang/GCC, Linux/macOS only)" OFF)
@@ -325,9 +331,11 @@ install(TARGETS vnetemplate TemplateWarnings TemplateBuildSettings
     INCLUDES DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
     COMPONENT vnetemplate
 )
-install(DIRECTORY include/vertexnova/ DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/vertexnova FILES_MATCHING PATTERN "*.h"
-    COMPONENT vnetemplate)
-install(DIRECTORY src/vertexnova/ DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/vertexnova FILES_MATCHING PATTERN "*.h"
-    COMPONENT vnetemplate)
+install(DIRECTORY include/vertexnova/ DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/vertexnova
+    COMPONENT vnetemplate
+    FILES_MATCHING PATTERN "*.h")
+install(DIRECTORY src/vertexnova/ DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/vertexnova
+    COMPONENT vnetemplate
+    FILES_MATCHING PATTERN "*.h")
 install(FILES ${CMAKE_BINARY_DIR}/config.h DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/vertexnova/template
     COMPONENT vnetemplate)

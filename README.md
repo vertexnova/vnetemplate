@@ -58,33 +58,40 @@ git submodule update --init --recursive
 
 ## Build
 
-From the project root:
+Builds use **`build/static`** or **`build/shared`** (one library type per directory). From the project root:
 
 ```bash
-cmake -B build -DCMAKE_BUILD_TYPE=Debug -DVNE_TEMPLATE_TESTS=ON
-cmake --build build
+# Shared library (default)
+cmake -B build/shared -DCMAKE_BUILD_TYPE=Debug -DVNE_TEMPLATE_TESTS=ON
+cmake --build build/shared
+
+# Static library
+cmake -B build/static -DCMAKE_BUILD_TYPE=Debug -DVNE_TEMPLATE_LIB_TYPE=static -DVNE_TEMPLATE_TESTS=ON
+cmake --build build/static
 ```
 
-Or use the platform scripts:
+Or use the platform scripts (they use `build/<lib_type>/...`):
 
 ```bash
-# macOS
+# macOS (default: shared)
 ./scripts/build_macos.sh -t Debug -a configure_and_build
-./scripts/build_macos.sh -a test
+./scripts/build_macos.sh -l static -t Release -a configure_and_build   # static in build/static/...
 
-# Linux (default compiler or -gcc / -clang)
+# Linux
 ./scripts/build_linux.sh -t Debug -a configure_and_build
+./scripts/build_linux.sh -l static -c clang -a test
 
-# Windows (PowerShell)
+# Windows
 .\scripts\build_windows.ps1 -BuildType Debug -Action configure_and_build
 ```
 
-Options: `-t` build type, `-a` action (`configure` | `build` | `configure_and_build` | `test`), `-clean`, `-j N`. macOS also supports `-xcode` for Xcode project.
+Options: `-t` build type, `-a` action, `-l` lib type (`static` | `shared`, default `shared`), `-clean`, `-j N`. macOS also supports `-xcode` for Xcode project.
 
 ## Test
 
 ```bash
-ctest -C Debug --test-dir build
+ctest -C Debug --test-dir build/shared
+# or for static: ctest -C Debug --test-dir build/static
 ```
 
 Or:
@@ -99,11 +106,11 @@ Or:
 - **API docs:** Configure with Doxygen enabled and build the doc target:
 
   ```bash
-  cmake -B build -DENABLE_DOXYGEN=ON
-  cmake --build build --target vnetemplate_doc_doxygen
+  cmake -B build/shared -DENABLE_DOXYGEN=ON
+  cmake --build build/shared --target vnetemplate_doc_doxygen
   ```
 
-  Output: `build/docs/html/index.html`.
+  Output: `build/shared/docs/html/index.html`.
 
 - **Script:** From project root:
 
@@ -120,7 +127,7 @@ Or:
   ./scripts/format.sh          # format sources
   ./scripts/format.sh -check   # check only (used in CI)
   ```
-- **clang-tidy:** Config in [.clang-tidy](.clang-tidy). Generate `compile_commands.json` (e.g. `cmake -DCMAKE_EXPORT_COMPILE_COMMANDS=ON -B build`), then run `clang-tidy` or `run-clang-tidy -p build`.
+- **clang-tidy:** Config in [.clang-tidy](.clang-tidy). Generate `compile_commands.json` (e.g. `cmake -DCMAKE_EXPORT_COMPILE_COMMANDS=ON -B build/shared`), then run `clang-tidy -p build/shared`.
 
 ## CI
 
