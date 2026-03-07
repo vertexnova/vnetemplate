@@ -30,9 +30,10 @@ PLATFORM="Darwin"
 COMPILER="clang"
 
 usage() {
-  echo "Usage: $0 [-t <build_type>] [-a <action>] [-clean] [-interactive] [-j <jobs>] [-xcode] [-xcode-only]"
+  echo "Usage: $0 [-t <build_type>] [-a <action>] [-l <lib_type>] [-clean] [-interactive] [-j <jobs>] [-xcode] [-xcode-only]"
   echo "  -t <build_type>  Debug|Release|RelWithDebInfo|MinSizeRel"
   echo "  -a <action>      configure|build|configure_and_build|test|xcode|xcode_build"
+  echo "  -l <lib_type>    static|shared (default: shared). Build dir: build/<lib_type>/..."
   echo "  -clean           Clean build directory first"
   echo "  -interactive     Interactive mode"
   echo "  -j <jobs>        Parallel jobs (default: 10)"
@@ -43,6 +44,7 @@ usage() {
 
 BUILD_TYPE="Debug"
 ACTION="configure_and_build"
+LIB_TYPE="shared"
 CLEAN_BUILD=false
 INTERACTIVE_MODE=false
 GENERATE_XCODE=false
@@ -52,6 +54,7 @@ while [[ $# -gt 0 ]]; do
   case $1 in
     -t|--build-type) BUILD_TYPE="$2"; shift 2 ;;
     -a|--action) ACTION="$2"; shift 2 ;;
+    -l|--lib-type) LIB_TYPE="$2"; shift 2 ;;
     -clean|--clean) CLEAN_BUILD=true; shift ;;
     -interactive|--interactive) INTERACTIVE_MODE=true; shift ;;
     -xcode|--xcode) GENERATE_XCODE=true; shift ;;
@@ -71,14 +74,15 @@ COMPILER_VERSION=$(clang --version | head -n 1 | awk '{print $4}' | sed 's/(.*)/
 echo "$PLATFORM :: $COMPILER-${COMPILER_VERSION}"
 PROJECT_ROOT=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)
 
+# Build dir: build/<lib_type>/<build_type>/...
 if [ "$GENERATE_XCODE" = true ]; then
-  BUILD_DIR="$PROJECT_ROOT/build/${BUILD_TYPE}/xcode-macos-$COMPILER-${COMPILER_VERSION}"
+  BUILD_DIR="$PROJECT_ROOT/build/${LIB_TYPE}/${BUILD_TYPE}/xcode-macos-$COMPILER-${COMPILER_VERSION}"
 else
-  BUILD_DIR="$PROJECT_ROOT/build/${BUILD_TYPE}/build-macos-$COMPILER-${COMPILER_VERSION}"
+  BUILD_DIR="$PROJECT_ROOT/build/${LIB_TYPE}/${BUILD_TYPE}/build-macos-$COMPILER-${COMPILER_VERSION}"
 fi
 
-[ "$GENERATE_XCODE" = true ] && CONFIGURE_CMD="cmake -G Xcode -DCMAKE_BUILD_TYPE=$BUILD_TYPE -DCMAKE_C_COMPILER=clang -DCMAKE_CXX_COMPILER=clang++ -DCMAKE_OSX_DEPLOYMENT_TARGET=10.15 -DVNE_TEMPLATE_TESTS=ON $PROJECT_ROOT" \
-  || CONFIGURE_CMD="cmake -DCMAKE_BUILD_TYPE=$BUILD_TYPE -DCMAKE_C_COMPILER=clang -DCMAKE_CXX_COMPILER=clang++ -DCMAKE_OSX_DEPLOYMENT_TARGET=10.15 -DVNE_TEMPLATE_TESTS=ON $PROJECT_ROOT"
+[ "$GENERATE_XCODE" = true ] && CONFIGURE_CMD="cmake -G Xcode -DCMAKE_BUILD_TYPE=$BUILD_TYPE -DVNE_TEMPLATE_LIB_TYPE=$LIB_TYPE -DCMAKE_C_COMPILER=clang -DCMAKE_CXX_COMPILER=clang++ -DCMAKE_OSX_DEPLOYMENT_TARGET=10.15 -DVNE_TEMPLATE_TESTS=ON $PROJECT_ROOT" \
+  || CONFIGURE_CMD="cmake -DCMAKE_BUILD_TYPE=$BUILD_TYPE -DVNE_TEMPLATE_LIB_TYPE=$LIB_TYPE -DCMAKE_C_COMPILER=clang -DCMAKE_CXX_COMPILER=clang++ -DCMAKE_OSX_DEPLOYMENT_TARGET=10.15 -DVNE_TEMPLATE_TESTS=ON $PROJECT_ROOT"
 
 [ "$GENERATE_XCODE" = true ] && BUILD_CMD="xcodebuild -project VneTemplate.xcodeproj -configuration $BUILD_TYPE -parallelizeTargets -jobs $JOBS" && TEST_CMD="xcodebuild -project VneTemplate.xcodeproj -configuration $BUILD_TYPE -target RUN_TESTS" \
   || BUILD_CMD="make -j$JOBS" && TEST_CMD="ctest --output-on-failure"

@@ -11,6 +11,23 @@ CMake modules (vnecmake) live in **cmake/vnecmake** at the project root; see mai
 
 ## Getting dependencies
 
+VneTemplate’s `.gitmodules` already defines all four submodules:
+
+| Submodule | Path | URL |
+|-----------|------|-----|
+| vnecmake | `cmake/vnecmake` | https://github.com/vertexnova/vnecmake.git |
+| googletest | `deps/external/googletest` | https://github.com/google/googletest.git |
+| vnecommon | `deps/internal/vnecommon` | https://github.com/vertexnova/vnecommon.git |
+| vnelogging | `deps/internal/vnelogging` | https://github.com/vertexnova/vnelogging.git |
+
+After cloning, initialize and update them from the project root:
+
+```bash
+git submodule update --init --recursive
+```
+
+The sections below give per-dependency details and optional `git submodule add` commands for repos that don’t yet have these entries.
+
 ### vnecmake (required)
 
 CMake modules come from the **vnecmake** submodule at `cmake/vnecmake`. From the project root:
@@ -45,12 +62,18 @@ The library optionally links to VertexNova internal dependencies when present:
 - **deps/internal/vnecommon** – Common utilities.
 - **deps/internal/vnelogging** – Logging (e.g. spdlog-based).
 
-These are not shipped with the template. Add them as git submodules or clone the repositories into the paths above. See the README in each internal dependency directory for instructions and recommended versions.
+These are not shipped with the template. Add them as git submodules from the project root:
 
-After adding internal deps, run:
+```bash
+git submodule add https://github.com/vertexnova/vnecommon.git deps/internal/vnecommon
+git submodule add https://github.com/vertexnova/vnelogging.git deps/internal/vnelogging
+git submodule update --init --recursive
+```
+
+If already in `.gitmodules`, run:
 
 ```bash
 git submodule update --init --recursive
 ```
 
-(or your project’s equivalent) so that all submodules are available.
+See the README in each internal dependency directory for recommended branch/tag and build options.

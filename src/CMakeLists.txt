@@ -16,12 +16,14 @@ set(HEADER_FILES
     ${VNE_INCLUDE_DIR}/vertexnova/template/template.h
 )
 
-add_library(vnetemplate STATIC ${SOURCE_FILES} ${HEADER_FILES})
+# One library per build: static or shared, always named vnetemplate (alias vne::template).
+if(VNE_TEMPLATE_LIB_TYPE STREQUAL "shared")
+    set(_lib_type SHARED)
+else()
+    set(_lib_type STATIC)
+endif()
 
-source_group("Sources" FILES ${SOURCE_FILES})
-source_group(TREE ${VNE_INCLUDE_DIR} PREFIX "Headers" FILES ${HEADER_FILES})
-
-add_library(vne::template ALIAS vnetemplate)
+add_library(vnetemplate ${_lib_type} ${SOURCE_FILES} ${HEADER_FILES})
 
 target_include_directories(vnetemplate
     PUBLIC
@@ -44,3 +46,16 @@ if(TARGET vne::logging)
 endif()
 
 target_compile_features(vnetemplate PUBLIC cxx_std_20)
+
+# Mark symbols for export on Windows when building the shared lib.
+if(_lib_type STREQUAL "SHARED")
+    target_compile_definitions(vnetemplate
+        PRIVATE VNE_TEMPLATE_BUILDING_DLL
+        INTERFACE VNE_TEMPLATE_DLL
+    )
+endif()
+
+add_library(vne::template ALIAS vnetemplate)
+
+source_group("Sources" FILES ${SOURCE_FILES})
+source_group(TREE ${VNE_INCLUDE_DIR} PREFIX "Headers" FILES ${HEADER_FILES})

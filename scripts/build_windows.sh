@@ -30,9 +30,10 @@ PLATFORM="Windows"
 COMPILER="cl"
 
 usage() {
-  echo "Usage: $0 [-t <build_type>] [-a <action>] [-clean] [-interactive] [-j <jobs>]"
+  echo "Usage: $0 [-t <build_type>] [-a <action>] [-l <lib_type>] [-clean] [-interactive] [-j <jobs>]"
   echo "  -t <build_type>  Debug|Release|RelWithDebInfo|MinSizeRel"
   echo "  -a <action>      configure|build|configure_and_build|test"
+  echo "  -l <lib_type>    static|shared (default: shared). Build dir: build/<lib_type>/..."
   echo "  -clean           Clean build directory first"
   echo "  -interactive     Interactive mode"
   echo "  -j <jobs>        Parallel jobs (default: 10)"
@@ -41,6 +42,7 @@ usage() {
 
 BUILD_TYPE="Debug"
 ACTION="configure_and_build"
+LIB_TYPE="shared"
 CLEAN_BUILD=false
 INTERACTIVE_MODE=false
 
@@ -48,6 +50,7 @@ while [[ $# -gt 0 ]]; do
   case $1 in
     -t|--build-type) BUILD_TYPE="$2"; shift 2 ;;
     -a|--action) ACTION="$2"; shift 2 ;;
+    -l|--lib-type) LIB_TYPE="$2"; shift 2 ;;
     -clean|--clean) CLEAN_BUILD=true; shift ;;
     -interactive|--interactive) INTERACTIVE_MODE=true; shift ;;
     -h|--help) usage ;;
@@ -76,10 +79,11 @@ fi
 
 echo "$PLATFORM :: $COMPILER-${COMPILER_VERSION}"
 PROJECT_ROOT=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)
-BUILD_DIR="$PROJECT_ROOT/build/${BUILD_TYPE}/build-windows-$COMPILER-${COMPILER_VERSION}"
+# Build dir: build/<lib_type>/<build_type>/build-windows-...
+BUILD_DIR="$PROJECT_ROOT/build/${LIB_TYPE}/${BUILD_TYPE}/build-windows-$COMPILER-${COMPILER_VERSION}"
 
 build_cmake_command() {
-  cmake -G "Visual Studio 17 2022" -A x64 -DCMAKE_BUILD_TYPE="$BUILD_TYPE" -DCMAKE_C_COMPILER=cl -DCMAKE_CXX_COMPILER=cl -DVNE_TEMPLATE_TESTS=ON "$PROJECT_ROOT"
+  cmake -G "Visual Studio 17 2022" -A x64 -DCMAKE_BUILD_TYPE="$BUILD_TYPE" -DVNE_TEMPLATE_LIB_TYPE="$LIB_TYPE" -DCMAKE_C_COMPILER=cl -DCMAKE_CXX_COMPILER=cl -DVNE_TEMPLATE_TESTS=ON "$PROJECT_ROOT"
 }
 
 BUILD_COMMAND="cmake --build . --config $BUILD_TYPE --parallel $JOBS"
