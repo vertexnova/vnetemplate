@@ -17,16 +17,12 @@
 
 name: CI
 
+# Push: no paths-ignore so CI runs on every merge to main (including release-please
+# merges that only touch CHANGELOG/VERSION/manifest). Otherwise the release merge
+# would skip CI and the release branch would appear "not merged" / checks missing.
 on:
   push:
     branches: ["main"]
-    paths-ignore:
-      - "CHANGELOG.md"
-      - "VERSION"
-      - ".release-please-manifest.json"
-      - ".github/release-please-config.json"
-      - "docs/**"
-      - "**/*.md"
   pull_request:
     branches: ["main"]
 
