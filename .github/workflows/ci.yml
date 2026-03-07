@@ -60,26 +60,35 @@ jobs:
         env:
           ACTOR: ${{ github.actor }}
           EVENT: ${{ github.event_name }}
+          HEAD_REF: ${{ github.head_ref }}
         run: |
           IS_RELEASE=false
 
-          # Only relevant on push to main (PRs always build).
+          # Case 1: release-please PR open/updated (pull_request event).
+          # Branch name always starts with "release-please--".
+          if [[ "$EVENT" == "pull_request" ]]; then
+            if [[ "$HEAD_REF" == release-please--* ]]; then
+              IS_RELEASE=true
+              echo "Release-please PR detected (branch: $HEAD_REF) — skipping builds."
+            fi
+          fi
+
+          # Case 2: release-please PR merged to main (push event).
+          # Actor is the bot AND changed files are exclusively release-please managed files
+          # (CHANGELOG.md, VERSION, .release-please-manifest.json, release-please-config.json).
           if [[ "$EVENT" == "push" ]]; then
-            # Signal 1: actor is the release-please bot.
             ACTOR_MATCH=false
             if [[ "$ACTOR" == "release-please[bot]" || "$ACTOR" == "github-actions[bot]" ]]; then
               ACTOR_MATCH=true
             fi
 
-            # Signal 2: changed files are exclusively release-please managed files
-            # (CHANGELOG.md, VERSION, .release-please-manifest.json, release-please-config.json).
             CHANGED="$(git diff --name-only HEAD~1 HEAD 2>/dev/null || true)"
             echo "Changed files: $CHANGED"
             NON_RELEASE=$(echo "$CHANGED" | grep -vE '^(CHANGELOG\.md|VERSION|\.release-please-manifest\.json|release-please-config\.json)$' || true)
 
             if [[ "$ACTOR_MATCH" == "true" && -z "$NON_RELEASE" && -n "$CHANGED" ]]; then
               IS_RELEASE=true
-              echo "Release-please commit detected (actor: $ACTOR, files: $CHANGED) — skipping builds."
+              echo "Release-please merge detected (actor: $ACTOR, files: $CHANGED) — skipping builds."
             fi
           fi
 
