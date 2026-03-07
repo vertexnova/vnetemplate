@@ -53,8 +53,8 @@ jobs:
           config-file: .github/release-please-config.json
           token: ${{ secrets.REPO_ACCESS_TOKEN || github.token }}
 
-      # Enable auto-merge so the Release PR merges automatically once
-      # the CI Gate required status check passes — no human needed.
+      # Enable auto-merge so the Release PR merges once CI Gate passes. Ensure branch
+      # protection requires only "CI Gate" (not individual job names) so this PR can pass.
       - name: Enable auto-merge on Release PR
         if: steps.rp.outputs.pr != ''
         env:
