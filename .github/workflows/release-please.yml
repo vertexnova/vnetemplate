@@ -6,8 +6,8 @@
 # Created:   February 2026
 #
 # Description: Release Please: opens/updates a Release PR from conventional commits.
-# When the Release PR is merged, publishes pre-built binary artifacts
-# (Release + Debug) for all supported platforms to the GitHub Release.
+# When the Release PR is merged, publishes pre-built Release binary artifacts
+# for all supported platforms to the GitHub Release.
 # Two-tier release model:
 #   Tier 1 — source consumers: pin the release tag as a git submodule.
 #   Tier 2 — binary consumers: download .tar.gz from GitHub Releases.
@@ -75,14 +75,14 @@ jobs:
   # Skipped on most pushes — release_created is true only when the Release PR
   # was merged in this run (release-please then creates the tag + GitHub Release).
   #
-  # Produces 6 tarballs per release:
-  #   vnetemplate-vX.Y.Z-{platform}-{Release|Debug}.tar.gz
+  # Produces 3 tarballs per release (Release build only):
+  #   vnetemplate-vX.Y.Z-{platform}.tar.gz
   #
   # Contents: static library in lib/ (libvnetemplate.a on Unix, vnetemplate.lib on Windows),
   #           include/vertexnova/template/, lib/cmake/vnetemplate/
   # --------------------------------------------------------------------
   publish:
-    name: "Release / publish (${{ matrix.platform }}, ${{ matrix.build_type }})"
+    name: "Release / publish (${{ matrix.platform }})"
     needs: [release-please]
     if: needs.release-please.outputs.release_created == 'true'
     permissions:
@@ -104,7 +104,6 @@ jobs:
             runner:   windows-latest
             c:        ""
             cpp:      ""
-        build_type: [Release, Debug]
 
     runs-on: ${{ matrix.runner }}
     steps:
@@ -130,25 +129,25 @@ jobs:
             COMPILER_FLAGS="-DCMAKE_C_COMPILER=${{ matrix.c }} -DCMAKE_CXX_COMPILER=${{ matrix.cpp }}"
           fi
           cmake -B build -S . \
-            -DCMAKE_BUILD_TYPE=${{ matrix.build_type }} \
+            -DCMAKE_BUILD_TYPE=Release \
             -DVNE_TEMPLATE_CI=ON \
-            -DCMAKE_INSTALL_PREFIX="$GITHUB_WORKSPACE/install" \
+            -DCMAKE_INSTALL_PREFIX="${{ github.workspace }}/install" \
             $COMPILER_FLAGS
 
       - name: Build
         shell: bash
-        run: cmake --build build --config ${{ matrix.build_type }} --parallel
+        run: cmake --build build --config Release --parallel
 
       - name: Install to staging directory
         shell: bash
-        run: cmake --install build --config ${{ matrix.build_type }}
+        run: cmake --install build --config Release
 
       - name: Package artifact
         shell: bash
         run: |
-          ARTIFACT="vnetemplate-v${{ needs.release-please.outputs.version }}-${{ matrix.platform }}-${{ matrix.build_type }}.tar.gz"
-          cd "$GITHUB_WORKSPACE/install"
-          tar -czf "$GITHUB_WORKSPACE/${ARTIFACT}" .
+          ARTIFACT="vnetemplate-v${{ needs.release-please.outputs.version }}-${{ matrix.platform }}.tar.gz"
+          # Use a path relative to the install dir to avoid Windows drive-letter issues with tar.
+          tar -czf "../${ARTIFACT}" -C "${{ github.workspace }}/install" .
           echo "ARTIFACT=${ARTIFACT}" >> "$GITHUB_ENV"
 
       - name: Upload to GitHub Release
