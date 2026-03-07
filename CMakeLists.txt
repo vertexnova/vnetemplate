@@ -313,6 +313,9 @@ endif()
 
 #==============================================================================
 # Installation
+# Use COMPONENT vnetemplate so that `cmake --install . --component vnetemplate`
+# installs only this library — not the internal deps (vnecommon, vnelogging)
+# which register their own install() rules via add_subdirectory.
 #==============================================================================
 include(GNUInstallDirs)
 install(TARGETS vnetemplate TemplateWarnings TemplateBuildSettings
@@ -320,7 +323,11 @@ install(TARGETS vnetemplate TemplateWarnings TemplateBuildSettings
     ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
     RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
     INCLUDES DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
+    COMPONENT vnetemplate
 )
-install(DIRECTORY include/vertexnova/ DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/vertexnova FILES_MATCHING PATTERN "*.h")
-install(DIRECTORY src/vertexnova/ DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/vertexnova FILES_MATCHING PATTERN "*.h")
-install(FILES ${CMAKE_BINARY_DIR}/config.h DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/vertexnova/template)
+install(DIRECTORY include/vertexnova/ DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/vertexnova FILES_MATCHING PATTERN "*.h"
+    COMPONENT vnetemplate)
+install(DIRECTORY src/vertexnova/ DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/vertexnova FILES_MATCHING PATTERN "*.h"
+    COMPONENT vnetemplate)
+install(FILES ${CMAKE_BINARY_DIR}/config.h DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/vertexnova/template
+    COMPONENT vnetemplate)

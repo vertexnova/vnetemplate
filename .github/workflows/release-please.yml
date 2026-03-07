@@ -140,7 +140,7 @@ jobs:
 
       - name: Install to staging directory
         shell: bash
-        run: cmake --install build --config Release
+        run: cmake --install build --config Release --component vnetemplate
 
       - name: Package artifact
         shell: bash
