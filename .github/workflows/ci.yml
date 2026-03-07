@@ -145,6 +145,7 @@ jobs:
   build-linux-gcc:
     name: "Build+Test / Linux GCC"
     needs: [pre-checks-gate]
+    if: needs.pre-checks-gate.result == 'success'
     uses: ./.github/workflows/build-reusable.yml
     with:
       runner:             ubuntu-latest
@@ -160,6 +161,7 @@ jobs:
   build-linux-clang:
     name: "Build+Test / Linux Clang"
     needs: [pre-checks-gate]
+    if: needs.pre-checks-gate.result == 'success'
     uses: ./.github/workflows/build-reusable.yml
     with:
       runner:             ubuntu-latest
@@ -174,6 +176,7 @@ jobs:
   build-macos:
     name: "Build+Test / macOS"
     needs: [pre-checks-gate]
+    if: needs.pre-checks-gate.result == 'success'
     uses: ./.github/workflows/build-reusable.yml
     with:
       runner:             macos-latest
@@ -188,6 +191,7 @@ jobs:
   build-windows:
     name: "Build+Test / Windows"
     needs: [pre-checks-gate]
+    if: needs.pre-checks-gate.result == 'success'
     uses: ./.github/workflows/build-reusable.yml
     with:
       runner:             windows-latest
@@ -202,6 +206,7 @@ jobs:
   build-web:
     name: "Build / Web (Emscripten)"
     needs: [pre-checks-gate]
+    if: needs.pre-checks-gate.result == 'success'
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -230,6 +235,7 @@ jobs:
   build-ios:
     name: "Build / iOS"
     needs: [pre-checks-gate]
+    if: needs.pre-checks-gate.result == 'success'
     runs-on: macos-latest
     permissions:
       contents: read
@@ -257,6 +263,7 @@ jobs:
   build-android:
     name: "Build / Android (arm64-v8a)"
     needs: [pre-checks-gate]
+    if: needs.pre-checks-gate.result == 'success'
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -284,6 +291,7 @@ jobs:
   build-linux-asan:
     name: "Build+Test / Linux ASan+UBSan"
     needs: [pre-checks-gate]
+    if: needs.pre-checks-gate.result == 'success'
     uses: ./.github/workflows/build-reusable.yml
     with:
       runner:             ubuntu-latest
@@ -306,6 +314,7 @@ jobs:
     name: "Analysis / clang-tidy"
     runs-on: ubuntu-latest
     needs: [build-linux-clang]
+    if: needs.build-linux-clang.result == 'success'
     permissions:
       contents: read
 
