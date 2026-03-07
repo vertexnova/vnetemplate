@@ -59,7 +59,8 @@ jobs:
         if: steps.rp.outputs.pr != ''
         env:
           GH_TOKEN: ${{ secrets.REPO_ACCESS_TOKEN || github.token }}
-        run: gh pr merge --auto --squash "${{ steps.rp.outputs.pr }}"
+          PR_NUMBER: ${{ fromJSON(steps.rp.outputs.pr).number }}
+        run: gh pr merge --repo "${{ github.repository }}" --auto --squash "$PR_NUMBER"
 
   # --------------------------------------------------------------------
   # Stage 2: Build and publish artifacts (only when a release was created this run).
