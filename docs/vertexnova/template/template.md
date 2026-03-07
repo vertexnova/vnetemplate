@@ -15,7 +15,7 @@ VneTemplate is a minimal C++ project template for the VertexNova ecosystem. It p
 
 ## Project layout and build
 
-The template follows a standard directory layout and builds a static library, tests, and optional examples:
+The template follows a standard directory layout and builds one library per build (static or shared), plus tests and optional examples. The library target is always `vnetemplate` with alias `vne::template`.
 
 ![Project layout](diagrams/architecture.png)
 
@@ -29,7 +29,7 @@ The template follows a standard directory layout and builds a static library, te
 | examples/ | Example apps (e.g. `01_hello_template`) |
 | cmake/vnecmake/ | CMake modules submodule |
 | deps/internal/, deps/external/ | Internal (vnecommon, vnelogging) and external (googletest) deps |
-| CMake configure + build | Produces `libvnetemplate.a`, tests, and examples |
+| CMake configure + build | Produces one lib: `libvnetemplate.a` or `libvnetemplate.so` (or `.dylib`/`.dll`), plus tests and examples |
 
 See the root [README.md](../../../README.md) for prerequisites, dependencies, and build commands.
 
@@ -61,8 +61,14 @@ const char* msg = vne::template_ns::hello();        // e.g. "Hello from VneTempl
 |--------|---------|-------------|
 | `VNE_TEMPLATE_TESTS` | ON | Build unit tests. |
 | `VNE_TEMPLATE_EXAMPLES` | ON (dev/top-level) / OFF (submodule) | Build examples (on by default in dev builds, off when used as a submodule). |
+| `VNE_TEMPLATE_LIB_TYPE` | shared | Library type: `static` or `shared`. One library per build; target is always `vnetemplate` (alias `vne::template`). |
 | `WARNINGS_AS_ERRORS` | OFF | Treat compiler warnings as errors. |
 | `ENABLE_DOXYGEN` | OFF | Generate Doxygen documentation. |
+
+## Static vs shared for deployment
+
+- **Static** (`-DVNE_TEMPLATE_LIB_TYPE=static`): Single executable, no runtime lib to ship. Best for one-binary deploy.
+- **Shared** (`-DVNE_TEMPLATE_LIB_TYPE=shared`, default): For plugins, many apps sharing one lib, or ABI versioning. Preferred for **cross-platform GL / multibackend** libs (one `libvnetemplate.so` plus backend plugins).
 
 ## Documentation
 
