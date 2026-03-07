@@ -62,7 +62,9 @@ jobs:
         run: gh pr merge --auto --squash "${{ steps.rp.outputs.pr }}"
 
   # --------------------------------------------------------------------
-  # Stage 2: Build and publish artifacts (only after release is created).
+  # Stage 2: Build and publish artifacts (only when a release was created this run).
+  # Skipped on most pushes — release_created is true only when the Release PR
+  # was merged in this run (release-please then creates the tag + GitHub Release).
   #
   # Produces 6 tarballs per release:
   #   vnetemplate-vX.Y.Z-{platform}-{Release|Debug}.tar.gz
