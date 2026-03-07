@@ -26,11 +26,12 @@ on:
   pull_request:
     branches: ["main"]
 
-# Cancel stale runs on the same branch/PR — saves runner minutes.
-# github.ref is unique per PR branch and per push-to-main.
+# PRs: same group per branch so a new push to the PR cancels the previous run.
+# Push: unique group per commit (ci-push-<sha>) so each push runs in parallel
+# and no run cancels another; release merges complete fully.
 concurrency:
-  group: ci-${{ github.ref }}
-  cancel-in-progress: true
+  group: ${{ github.event_name == 'push' && format('ci-push-{0}', github.sha) || format('ci-pr-{0}', github.ref) }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 permissions:
   contents: read
