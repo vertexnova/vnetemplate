@@ -146,8 +146,9 @@ jobs:
         shell: bash
         run: |
           ARTIFACT="vnetemplate-v${{ needs.release-please.outputs.version }}-${{ matrix.platform }}.tar.gz"
-          # Use a path relative to the install dir to avoid Windows drive-letter issues with tar.
-          tar -czf "../${ARTIFACT}" -C "${{ github.workspace }}/install" .
+          # -C changes into the install dir so tar sees only its contents (no path prefix).
+          # The output path is relative to CWD (repo root) — avoids Windows drive-letter issues.
+          tar -czf "${ARTIFACT}" -C "${{ github.workspace }}/install" .
           echo "ARTIFACT=${ARTIFACT}" >> "$GITHUB_ENV"
 
       - name: Upload to GitHub Release
