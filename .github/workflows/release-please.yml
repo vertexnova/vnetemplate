@@ -59,8 +59,9 @@ jobs:
         if: steps.rp.outputs.pr != ''
         env:
           GH_TOKEN: ${{ secrets.REPO_ACCESS_TOKEN || github.token }}
-          PR_NUMBER: ${{ fromJSON(steps.rp.outputs.pr).number }}
+          PR_RAW: ${{ steps.rp.outputs.pr }}
         run: |
+          PR_NUMBER="$(echo "$PR_RAW" | python3 -c 'import sys,json; print(json.load(sys.stdin)["number"])')"
           if ! gh pr merge --repo "${{ github.repository }}" --auto --squash "$PR_NUMBER" 2>&1 | tee /tmp/gh-out; then
             if grep -q "enablePullRequestAutoMerge\|Auto merge is not allowed" /tmp/gh-out; then
               echo "::warning::Auto-merge is disabled for this repo. Enable it under Settings → General → Pull Requests → 'Allow auto-merge'. Release PR #$PR_NUMBER remains open for manual merge."
