@@ -55,11 +55,16 @@ jobs:
 
       # Enable auto-merge so the Release PR merges once CI Gate passes. Ensure branch
       # protection requires only "CI Gate" (not individual job names) so this PR can pass.
+      # PR metadata is passed via env var to avoid shell-quoting issues when the PR title
+      # contains special characters such as parentheses (e.g. "chore(main): release X.Y.Z").
       - name: Enable auto-merge on Release PR
         if: steps.rp.outputs.pr != ''
         env:
           GH_TOKEN: ${{ secrets.REPO_ACCESS_TOKEN || github.token }}
-        run: gh pr merge --auto --squash "${{ steps.rp.outputs.pr }}"
+          PR_METADATA: ${{ steps.rp.outputs.pr }}
+        run: |
+          PR_NUMBER=$(echo "$PR_METADATA" | jq -r '.number')
+          gh pr merge --auto --squash "$PR_NUMBER"
 
   # --------------------------------------------------------------------
   # Stage 2: Build and publish artifacts (only when a release was created this run).
