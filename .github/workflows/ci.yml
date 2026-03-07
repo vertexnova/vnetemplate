@@ -313,17 +313,17 @@ jobs:
 
       - name: Configure CMake (iOS)
         run: |
-          cmake -B build/shared -S . \
+          cmake -B build/static -S . \
             -G Xcode \
             -DCMAKE_SYSTEM_NAME=iOS \
             -DCMAKE_OSX_ARCHITECTURES=arm64 \
             -DCMAKE_BUILD_TYPE=Release \
             -DVNE_TEMPLATE_CI=ON \
-            -DVNE_TEMPLATE_LIB_TYPE=shared \
+            -DVNE_TEMPLATE_LIB_TYPE=static \
             -DVNE_TEMPLATE_TESTS=OFF   # Xcode requires bundle ID for test targets; build-only check
 
       - name: Build
-        run: cmake --build build/shared --config Release --parallel
+        run: cmake --build build/static --config Release --parallel
 
   build-android:
     name: "Build / Android (arm64-v8a)"

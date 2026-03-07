@@ -225,14 +225,14 @@ jobs:
         if: always()
         with:
           report_paths: "${{ env.BUILD_DIR }}/test-results.xml"
-          check_name: "Tests (${{ inputs.platform }}, ${{ env.EFFECTIVE_BUILD_TYPE }})"
+          check_name: "Tests (${{ inputs.platform }}, ${{ env.EFFECTIVE_BUILD_TYPE }}${{ inputs.lib_type && format(', {0}', inputs.lib_type) || '' }})"
           fail_on_failure: true
 
       - name: Upload test results
         uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: test-results-${{ inputs.platform }}-${{ env.EFFECTIVE_BUILD_TYPE }}
+          name: test-results-${{ inputs.platform }}-${{ env.EFFECTIVE_BUILD_TYPE }}${{ inputs.lib_type && format('-{0}', inputs.lib_type) || '' }}
           path: ${{ env.BUILD_DIR }}/test-results.xml
           retention-days: 7
 
