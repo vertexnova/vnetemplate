@@ -40,6 +40,31 @@ permissions:
 
 jobs:
   # ====================================================================
+  # STAGE 0: DETECT RELEASE-PLEASE COMMITS
+  # Release-please merges only touch CHANGELOG.md and VERSION.
+  # Skip all builds for those commits — CI already ran on the source PR.
+  # ====================================================================
+
+  detect-release:
+    name: "Pre-checks / detect release commit"
+    runs-on: ubuntu-latest
+    outputs:
+      is_release: ${{ steps.check.outputs.is_release }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: false
+      - id: check
+        run: |
+          MSG="$(git log -1 --format='%s')"
+          if echo "$MSG" | grep -qE '^chore\(main\): release'; then
+            echo "is_release=true" >> "$GITHUB_OUTPUT"
+            echo "Release-please commit detected — skipping builds."
+          else
+            echo "is_release=false" >> "$GITHUB_OUTPUT"
+          fi
+
+  # ====================================================================
   # STAGE 1: PRE-CHECKS (fail-fast gate)
   # These jobs do NOT clone submodules — they only need source files.
   # If any pre-check fails the gate blocks all downstream builds.
@@ -115,7 +140,7 @@ jobs:
   pre-checks-gate:
     name: "Pre-checks gate"
     runs-on: ubuntu-latest
-    needs: [format-check]
+    needs: [detect-release, format-check]
     if: always()
     steps:
       - name: Verify all pre-checks passed
@@ -136,8 +161,8 @@ jobs:
 
   build-linux-gcc:
     name: "Build+Test / Linux GCC"
-    needs: [pre-checks-gate]
-    if: needs.pre-checks-gate.result == 'success'
+    needs: [detect-release, pre-checks-gate]
+    if: needs.pre-checks-gate.result == 'success' && needs.detect-release.outputs.is_release != 'true'
     uses: ./.github/workflows/build-reusable.yml
     with:
       runner:             ubuntu-latest
@@ -152,8 +177,8 @@ jobs:
 
   build-linux-clang:
     name: "Build+Test / Linux Clang"
-    needs: [pre-checks-gate]
-    if: needs.pre-checks-gate.result == 'success'
+    needs: [detect-release, pre-checks-gate]
+    if: needs.pre-checks-gate.result == 'success' && needs.detect-release.outputs.is_release != 'true'
     uses: ./.github/workflows/build-reusable.yml
     with:
       runner:             ubuntu-latest
@@ -167,8 +192,8 @@ jobs:
 
   build-macos:
     name: "Build+Test / macOS"
-    needs: [pre-checks-gate]
-    if: needs.pre-checks-gate.result == 'success'
+    needs: [detect-release, pre-checks-gate]
+    if: needs.pre-checks-gate.result == 'success' && needs.detect-release.outputs.is_release != 'true'
     uses: ./.github/workflows/build-reusable.yml
     with:
       runner:             macos-latest
@@ -182,8 +207,8 @@ jobs:
 
   build-windows:
     name: "Build+Test / Windows"
-    needs: [pre-checks-gate]
-    if: needs.pre-checks-gate.result == 'success'
+    needs: [detect-release, pre-checks-gate]
+    if: needs.pre-checks-gate.result == 'success' && needs.detect-release.outputs.is_release != 'true'
     uses: ./.github/workflows/build-reusable.yml
     with:
       runner:             windows-latest
@@ -197,8 +222,8 @@ jobs:
 
   build-web:
     name: "Build / Web (Emscripten)"
-    needs: [pre-checks-gate]
-    if: needs.pre-checks-gate.result == 'success'
+    needs: [detect-release, pre-checks-gate]
+    if: needs.pre-checks-gate.result == 'success' && needs.detect-release.outputs.is_release != 'true'
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -226,8 +251,8 @@ jobs:
 
   build-ios:
     name: "Build / iOS"
-    needs: [pre-checks-gate]
-    if: needs.pre-checks-gate.result == 'success'
+    needs: [detect-release, pre-checks-gate]
+    if: needs.pre-checks-gate.result == 'success' && needs.detect-release.outputs.is_release != 'true'
     runs-on: macos-latest
     permissions:
       contents: read
@@ -254,8 +279,8 @@ jobs:
 
   build-android:
     name: "Build / Android (arm64-v8a)"
-    needs: [pre-checks-gate]
-    if: needs.pre-checks-gate.result == 'success'
+    needs: [detect-release, pre-checks-gate]
+    if: needs.pre-checks-gate.result == 'success' && needs.detect-release.outputs.is_release != 'true'
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -282,8 +307,8 @@ jobs:
 
   build-linux-asan:
     name: "Build+Test / Linux ASan+UBSan"
-    needs: [pre-checks-gate]
-    if: needs.pre-checks-gate.result == 'success'
+    needs: [detect-release, pre-checks-gate]
+    if: needs.pre-checks-gate.result == 'success' && needs.detect-release.outputs.is_release != 'true'
     uses: ./.github/workflows/build-reusable.yml
     with:
       runner:             ubuntu-latest
@@ -370,6 +395,7 @@ jobs:
     runs-on: ubuntu-latest
     if: always()
     needs:
+      - detect-release
       - pre-checks-gate
       - commit-lint
       - build-linux-gcc
