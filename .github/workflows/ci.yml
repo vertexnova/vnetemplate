@@ -115,23 +115,15 @@ jobs:
   pre-checks-gate:
     name: "Pre-checks gate"
     runs-on: ubuntu-latest
-    needs: [format-check, commit-lint]
+    needs: [format-check]
     if: always()
     steps:
       - name: Verify all pre-checks passed
         run: |
           FORMAT="${{ needs.format-check.result }}"
-          LINT="${{ needs.commit-lint.result }}"
-          EVENT="${{ github.event_name }}"
 
           if [[ "$FORMAT" != "success" ]]; then
             echo "::error::format-check did not pass (result: $FORMAT)"
-            exit 1
-          fi
-
-          # commit-lint is skipped on push events — that is expected and OK.
-          if [[ "$EVENT" == "pull_request" && "$LINT" != "success" ]]; then
-            echo "::error::commit-lint did not pass (result: $LINT)"
             exit 1
           fi
 
@@ -379,6 +371,7 @@ jobs:
     if: always()
     needs:
       - pre-checks-gate
+      - commit-lint
       - build-linux-gcc
       - build-linux-clang
       - build-linux-asan
@@ -394,6 +387,7 @@ jobs:
         run: |
           RESULTS=(
             "pre-checks-gate=${{ needs.pre-checks-gate.result }}"
+            "commit-lint=${{ needs.commit-lint.result }}"
             "build-linux-gcc=${{ needs.build-linux-gcc.result }}"
             "build-linux-clang=${{ needs.build-linux-clang.result }}"
             "build-linux-asan=${{ needs.build-linux-asan.result }}"
@@ -426,6 +420,7 @@ jobs:
           echo "| Job | Result |" >> "$GITHUB_STEP_SUMMARY"
           echo "|-----|--------|" >> "$GITHUB_STEP_SUMMARY"
           echo "| pre-checks-gate   | ${{ needs.pre-checks-gate.result }}   |" >> "$GITHUB_STEP_SUMMARY"
+          echo "| commit-lint       | ${{ needs.commit-lint.result }}       |" >> "$GITHUB_STEP_SUMMARY"
           echo "| build-linux-gcc   | ${{ needs.build-linux-gcc.result }}   |" >> "$GITHUB_STEP_SUMMARY"
           echo "| build-linux-clang | ${{ needs.build-linux-clang.result }} |" >> "$GITHUB_STEP_SUMMARY"
           echo "| build-linux-asan  | ${{ needs.build-linux-asan.result }}  |" >> "$GITHUB_STEP_SUMMARY"
