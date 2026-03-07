@@ -26,11 +26,11 @@ on:
   pull_request:
     branches: ["main"]
 
-# Cancel in progress only for PRs (new push to same PR cancels old run).
-# For push to main we do NOT cancel — so release merges and normal pushes
-# run the full pipeline (build jobs are not skipped by a competing run).
+# PRs: same group per branch so a new push to the PR cancels the previous run.
+# Push: unique group per commit (ci-push-<sha>) so each push runs in parallel
+# and no run cancels another; release merges complete fully.
 concurrency:
-  group: ci-${{ github.ref }}
+  group: ${{ github.event_name == 'push' && format('ci-push-{0}', github.sha) || format('ci-pr-{0}', github.ref) }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 permissions:
