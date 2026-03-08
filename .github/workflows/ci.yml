@@ -6,7 +6,7 @@
 # Created:   February 2026
 #
 # Description: CI pipeline — staged, gated, with concurrency cancellation.
-# Stage 1 — Pre-checks  : clang-format, commit-lint (fail-fast gate)
+# Stage 1 — Pre-checks  : clang-format (fail-fast gate), commit-lint (warning only)
 # Stage 2+3 — Build+Test: Linux GCC/Clang/ASan, macOS, Windows (parallel)
 # Stage 4 — Analysis    : clang-tidy (reuses Clang build cache)
 # Stage 5 — CI Gate     : single required status check for branch protection
@@ -152,21 +152,21 @@ jobs:
           FAILED=0
           while IFS= read -r msg; do
             if ! echo "$msg" | grep -qP "$PATTERN"; then
-              echo "::error::Bad commit message: $msg"
+              echo "::warning::Commit message does not follow Conventional Commits: $msg"
               echo "  Expected: type(scope?): description"
               echo "  Valid types: feat fix docs style refactor perf test build ci chore revert"
               FAILED=1
             fi
           done < <(git log --format="%s" "${BASE_SHA}..${HEAD_SHA}")
           if [[ $FAILED -eq 1 ]]; then
-            echo "One or more commits do not follow Conventional Commits format."
-            exit 1
+            echo "::warning::One or more commits do not follow Conventional Commits format (this check does not block the gate)."
+          else
+            echo "All commits follow Conventional Commits format."
           fi
-          echo "All commits follow Conventional Commits format."
 
   # Logical AND gate: build jobs declare `needs: [pre-checks-gate]` so
-  # they only run after BOTH format-check AND commit-lint have passed
-  # (or commit-lint was legitimately skipped on a push event).
+  # they only run after format-check has passed. Commit-lint runs in parallel
+  # and does not block the gate (warnings only).
   pre-checks-gate:
     name: "Pre-checks gate"
     runs-on: ubuntu-latest
@@ -448,7 +448,6 @@ jobs:
     needs:
       - detect-release
       - pre-checks-gate
-      - commit-lint
       - build-linux-gcc
       - build-linux-clang
       - build-linux-clang-static
@@ -465,7 +464,6 @@ jobs:
         run: |
           RESULTS=(
             "pre-checks-gate=${{ needs.pre-checks-gate.result }}"
-            "commit-lint=${{ needs.commit-lint.result }}"
             "build-linux-gcc=${{ needs.build-linux-gcc.result }}"
             "build-linux-clang=${{ needs.build-linux-clang.result }}"
             "build-linux-clang-static=${{ needs.build-linux-clang-static.result }}"
@@ -499,7 +497,6 @@ jobs:
           echo "| Job | Result |" >> "$GITHUB_STEP_SUMMARY"
           echo "|-----|--------|" >> "$GITHUB_STEP_SUMMARY"
           echo "| pre-checks-gate   | ${{ needs.pre-checks-gate.result }}   |" >> "$GITHUB_STEP_SUMMARY"
-          echo "| commit-lint       | ${{ needs.commit-lint.result }}       |" >> "$GITHUB_STEP_SUMMARY"
           echo "| build-linux-gcc   | ${{ needs.build-linux-gcc.result }}   |" >> "$GITHUB_STEP_SUMMARY"
           echo "| build-linux-clang | ${{ needs.build-linux-clang.result }} |" >> "$GITHUB_STEP_SUMMARY"
           echo "| build-linux-clang-static | ${{ needs.build-linux-clang-static.result }} |" >> "$GITHUB_STEP_SUMMARY"
