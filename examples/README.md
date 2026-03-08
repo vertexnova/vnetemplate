@@ -26,7 +26,7 @@ Executables are placed in `build/shared/bin/examples/` (or `build/static/bin/exa
 
 Minimal usage: call `vne::template_ns::hello()` and `get_version()`.
 
-**Run:** `./build/shared/bin/examples/example_01_hello_template`
+**Run:** `./build/<lib_type>/bin/examples/example_01_hello_template` (use `shared` or `static` to match your build)
 
 ## Quick Reference
 

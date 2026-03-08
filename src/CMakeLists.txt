@@ -47,7 +47,8 @@ endif()
 
 target_compile_features(vnetemplate PUBLIC cxx_std_20)
 
-# Mark symbols for export on Windows when building the shared lib.
+# Set export/import defines for shared builds. The header uses them only on Windows
+# (VNE_TEMPLATE_API becomes __declspec(dllexport)/dllimport); on other platforms they are no-ops.
 if(_lib_type STREQUAL "SHARED")
     target_compile_definitions(vnetemplate
         PRIVATE VNE_TEMPLATE_BUILDING_DLL
