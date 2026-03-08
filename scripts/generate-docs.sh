@@ -24,7 +24,7 @@ NC='\033[0m' # No Color
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(dirname "$SCRIPT_DIR")"
 DOCS_DIR="$PROJECT_ROOT/docs"
-BUILD_DIR="$PROJECT_ROOT/build"
+BUILD_DIR="$PROJECT_ROOT/build/shared"
 DOXYGEN_HTML="$BUILD_DIR/docs/html"
 
 # Logging functions
@@ -85,14 +85,11 @@ generate_api_docs() {
     log_info "Generating API documentation (via CMake)..."
 
     mkdir -p "$BUILD_DIR"
-    cd "$BUILD_DIR"
+    cmake -S "$PROJECT_ROOT" -B "$BUILD_DIR" \
+        -DENABLE_DOXYGEN=ON -DVNE_TEMPLATE_LIB_TYPE=shared
+    cmake --build "$BUILD_DIR" --target vnetemplate_doc_doxygen
 
-    cmake -DENABLE_DOXYGEN=ON ..
-    cmake --build . --target VneTemplate_doc_doxygen
-
-    cd "$PROJECT_ROOT"
-
-    # Doxygen output is build/docs/html/index.html (OUTPUT_DIRECTORY=.../docs, HTML_OUTPUT=html)
+    # Doxygen output is build/shared/docs/html/index.html (OUTPUT_DIRECTORY=.../docs, HTML_OUTPUT=html)
     if [[ -f "$DOXYGEN_HTML/index.html" ]]; then
         log_success "API documentation generated successfully"
         log_info "API documentation available at: $DOXYGEN_HTML/index.html"

@@ -78,8 +78,8 @@ jobs:
   # Produces 3 tarballs per release (Release build only):
   #   vnetemplate-vX.Y.Z-{platform}.tar.gz
   #
-  # Contents: static library in lib/ (libvnetemplate.a on Unix, vnetemplate.lib on Windows),
-  #           include/vertexnova/template/, lib/cmake/vnetemplate/
+  # Contents: one library per build in lib/ (static or shared via VNE_TEMPLATE_LIB_TYPE;
+  #           e.g. libvnetemplate.so or libvnetemplate.a on Unix), include/vertexnova/template/
   # --------------------------------------------------------------------
   publish:
     name: "Release / publish (${{ matrix.platform }})"
@@ -128,19 +128,20 @@ jobs:
           if [[ -n "${{ matrix.c }}" ]]; then
             COMPILER_FLAGS="-DCMAKE_C_COMPILER=${{ matrix.c }} -DCMAKE_CXX_COMPILER=${{ matrix.cpp }}"
           fi
-          cmake -B build -S . \
+          cmake -B build/shared -S . \
             -DCMAKE_BUILD_TYPE=Release \
             -DVNE_TEMPLATE_CI=ON \
+            -DVNE_TEMPLATE_LIB_TYPE=shared \
             -DCMAKE_INSTALL_PREFIX="${{ github.workspace }}/install" \
             $COMPILER_FLAGS
 
       - name: Build
         shell: bash
-        run: cmake --build build --config Release --parallel
+        run: cmake --build build/shared --config Release --parallel
 
       - name: Install to staging directory
         shell: bash
-        run: cmake --install build --config Release
+        run: cmake --install build/shared --config Release --component vnetemplate
 
       - name: Package artifact
         shell: bash

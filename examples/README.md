@@ -4,16 +4,21 @@ This directory contains examples demonstrating the VneTemplate API.
 
 ## Building Examples
 
-From the project root:
+From the project root (use `build/shared` or `build/static`):
 
 ```bash
-cmake -B build -DVNE_TEMPLATE_EXAMPLES=ON
-cmake --build build
+# Shared library build
+cmake -B build/shared -DVNE_TEMPLATE_EXAMPLES=ON -DVNE_TEMPLATE_LIB_TYPE=shared
+cmake --build build/shared
+
+# Static library build
+cmake -B build/static -DVNE_TEMPLATE_EXAMPLES=ON -DVNE_TEMPLATE_LIB_TYPE=static
+cmake --build build/static
 ```
 
 Alternatively, `-DVNE_TEMPLATE_DEV=ON` enables both tests and examples.
 
-Executables are placed in `build/bin/examples/`.
+Executables are placed in `build/shared/bin/examples/` (or `build/static/bin/examples/`).
 
 ## Available Examples
 
@@ -21,7 +26,7 @@ Executables are placed in `build/bin/examples/`.
 
 Minimal usage: call `vne::template_ns::hello()` and `get_version()`.
 
-**Run:** `./build/bin/examples/example_01_hello_template`
+**Run:** `./build/<lib_type>/bin/examples/example_01_hello_template` (use `shared` or `static` to match your build)
 
 ## Quick Reference
 

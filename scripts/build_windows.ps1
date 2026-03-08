@@ -13,6 +13,8 @@
 param(
     [ValidateSet("Debug", "Release", "RelWithDebInfo", "MinSizeRel")]
     [string]$BuildType = "Debug",
+    [ValidateSet("shared", "static")]
+    [string]$LibType = "shared",
     [ValidateSet("configure", "build", "configure_and_build", "test")]
     [string]$Action = "configure_and_build",
     [switch]$Clean,
@@ -37,8 +39,9 @@ if (-not $Generator) {
     $Generator = "-G `"Ninja`" -DCMAKE_C_COMPILER=cl.exe -DCMAKE_CXX_COMPILER=cl.exe"
 }
 
-$BuildDir = Join-Path $ProjectRoot "build\$BuildType\build-windows-msvc"
-$ConfigureCmd = "cmake -B `"$BuildDir`" -S `"$ProjectRoot`" -DCMAKE_BUILD_TYPE=$BuildType -DVNE_TEMPLATE_TESTS=ON $Generator"
+# Build dir: build/<LibType>/<BuildType>/build-windows-msvc (matches bash script layout)
+$BuildDir = Join-Path $ProjectRoot "build\$LibType\$BuildType\build-windows-msvc"
+$ConfigureCmd = "cmake -B `"$BuildDir`" -S `"$ProjectRoot`" -DCMAKE_BUILD_TYPE=$BuildType -DVNE_TEMPLATE_LIB_TYPE=$LibType -DVNE_TEMPLATE_TESTS=ON $Generator"
 $BuildCmd = "cmake --build `"$BuildDir`" --config $BuildType --parallel $Jobs"
 $TestCmd = "ctest --test-dir `"$BuildDir`" --output-on-failure -C $BuildType"
 
@@ -51,7 +54,7 @@ function Ensure-BuildDir {
     if (-not (Test-Path $BuildDir)) { New-Item -ItemType Directory -Path $BuildDir -Force | Out-Null }
 }
 
-Write-Host "Windows :: MSVC ($BuildType)"
+Write-Host "Windows :: MSVC ($BuildType, $LibType)"
 Write-Host ""
 
 Set-Location $ProjectRoot
@@ -77,7 +80,7 @@ switch ($Action) {
         Invoke-Expression $TestCmd
     }
     default {
-        Write-Host "Usage: .\build_windows.ps1 [-BuildType Debug|Release|...] [-Action configure|build|configure_and_build|test] [-Clean] [-Jobs N]"
+        Write-Host "Usage: .\build_windows.ps1 [-BuildType Debug|Release|...] [-LibType shared|static] [-Action configure|build|configure_and_build|test] [-Clean] [-Jobs N]"
         exit 1
     }
 }

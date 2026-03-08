@@ -55,7 +55,7 @@ COMPILER="gcc"
 
 # Function to display usage information
 usage() {
-  echo "Usage: $0 [-t <build_type>] [-a <action>] [-c <compiler>] [-clean] [-interactive] [-j <jobs>]"
+  echo "Usage: $0 [-t <build_type>] [-a <action>] [-c <compiler>] [-l <lib_type>] [-clean] [-interactive] [-j <jobs>]"
   echo "Options:"
   echo "  -t <build_type>    Specify the build type (Debug, Release, RelWithDebInfo, MinSizeRel)"
   echo "  -a <action>        Specify the action to perform:"
@@ -64,15 +64,16 @@ usage() {
   echo "                     configure_and_build: Configure and build the project"
   echo "                     test: Run tests"
   echo "  -c <compiler>      Specify the compiler (gcc, clang)"
+  echo "  -l <lib_type>      Library type: static or shared (default: shared). Build dir: build/<lib_type>/..."
   echo "  -clean             Clean the build directory before performing the action"
   echo "  -interactive       Run in interactive mode to choose options"
   echo "  -j <jobs>          Number of parallel jobs (default: 10)"
   echo ""
   echo "Examples:"
   echo "  $0 -t Debug -a configure_and_build"
-  echo "  $0 -c clang -j 32"
+  echo "  $0 -c clang -l static -j 32"
   echo "  $0 -interactive"
-  echo "  $0 -t Release -clean"
+  echo "  $0 -t Release -l shared -clean"
   exit 1
 }
 
@@ -108,6 +109,17 @@ interactive_mode() {
     *) COMPILER="gcc" ;;
   esac
 
+  # Library type (static or shared; build dir will be build/<lib_type>/...)
+  echo ""
+  echo "Select library type:"
+  echo "1) shared (default) - shared library"
+  echo "2) static - static library"
+  read -p "Enter choice (1-2) [1]: " lib_choice
+  case $lib_choice in
+    2) LIB_TYPE="static" ;;
+    *) LIB_TYPE="shared" ;;
+  esac
+
   # Action selection
   echo ""
   echo "Select Action:"
@@ -132,6 +144,7 @@ interactive_mode() {
   echo "=== Configuration Summary ==="
   echo "Platform: $PLATFORM"
   echo "Build Type: $BUILD_TYPE"
+  echo "Library Type: $LIB_TYPE (build dir: build/$LIB_TYPE/...)"
   echo "Compiler: $COMPILER"
   echo "Action: $ACTION"
   echo "Clean Build: $CLEAN_BUILD"
@@ -148,6 +161,7 @@ interactive_mode() {
 BUILD_TYPE="Debug"
 ACTION="configure_and_build"
 COMPILER="gcc"
+LIB_TYPE="shared"
 CLEAN_BUILD=false
 INTERACTIVE_MODE=false
 
@@ -164,6 +178,10 @@ while [[ $# -gt 0 ]]; do
       ;;
     -c|--compiler)
       COMPILER="$2"
+      shift 2
+      ;;
+    -l|--lib-type)
+      LIB_TYPE="$2"
       shift 2
       ;;
     -clean|--clean)
@@ -204,17 +222,17 @@ echo "$PLATFORM :: $COMPILER-${COMPILER_VERSION}"
 # Store project root directory
 PROJECT_ROOT=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)
 
-# Set the build directory based on build type and compiler
-BUILD_DIR="$PROJECT_ROOT/build/${BUILD_TYPE}/build-linux-$COMPILER-${COMPILER_VERSION}"
+# Set the build directory: build/<lib_type>/<build_type>/build-linux-<compiler>-<version>
+BUILD_DIR="$PROJECT_ROOT/build/${LIB_TYPE}/${BUILD_TYPE}/build-linux-$COMPILER-${COMPILER_VERSION}"
 
 # Build CMake command
 build_cmake_command() {
   local base_cmd=""
 
   if [ "$COMPILER" = "gcc" ]; then
-    base_cmd="cmake -DCMAKE_BUILD_TYPE=$BUILD_TYPE -DCMAKE_C_COMPILER=gcc -DCMAKE_CXX_COMPILER=g++ -DVNE_TEMPLATE_TESTS=ON"
+    base_cmd="cmake -DCMAKE_BUILD_TYPE=$BUILD_TYPE -DVNE_TEMPLATE_LIB_TYPE=$LIB_TYPE -DCMAKE_C_COMPILER=gcc -DCMAKE_CXX_COMPILER=g++ -DVNE_TEMPLATE_TESTS=ON"
   elif [ "$COMPILER" = "clang" ]; then
-    base_cmd="cmake -DCMAKE_BUILD_TYPE=$BUILD_TYPE -DCMAKE_C_COMPILER=clang -DCMAKE_CXX_COMPILER=clang++ -DVNE_TEMPLATE_TESTS=ON"
+    base_cmd="cmake -DCMAKE_BUILD_TYPE=$BUILD_TYPE -DVNE_TEMPLATE_LIB_TYPE=$LIB_TYPE -DCMAKE_C_COMPILER=clang -DCMAKE_CXX_COMPILER=clang++ -DVNE_TEMPLATE_TESTS=ON"
   fi
 
   echo "$base_cmd $PROJECT_ROOT"
