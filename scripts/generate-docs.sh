@@ -85,12 +85,9 @@ generate_api_docs() {
     log_info "Generating API documentation (via CMake)..."
 
     mkdir -p "$BUILD_DIR"
-    cd "$BUILD_DIR"
-
-    cmake -DENABLE_DOXYGEN=ON -DVNE_TEMPLATE_LIB_TYPE=shared ..
-    cmake --build . --target vnetemplate_doc_doxygen
-
-    cd "$PROJECT_ROOT"
+    cmake -S "$PROJECT_ROOT" -B "$BUILD_DIR" \
+        -DENABLE_DOXYGEN=ON -DVNE_TEMPLATE_LIB_TYPE=shared
+    cmake --build "$BUILD_DIR" --target vnetemplate_doc_doxygen
 
     # Doxygen output is build/shared/docs/html/index.html (OUTPUT_DIRECTORY=.../docs, HTML_OUTPUT=html)
     if [[ -f "$DOXYGEN_HTML/index.html" ]]; then
