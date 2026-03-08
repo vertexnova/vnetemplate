@@ -83,9 +83,10 @@ Or use the platform scripts (they use `build/<lib_type>/...`):
 
 # Windows
 .\scripts\build_windows.ps1 -BuildType Debug -Action configure_and_build
+.\scripts\build_windows.ps1 -LibType static -BuildType Release -Action configure_and_build   # static in build/static/...
 ```
 
-Options: `-t` build type, `-a` action, `-l` lib type (`static` | `shared`, default `shared`), `-clean`, `-j N`. macOS also supports `-xcode` for Xcode project.
+Options: `-t` / `-BuildType` build type, `-a` / `-Action` action, `-l` / `-LibType` lib type (`static` | `shared`, default `shared`), `-clean` / `-Clean`, `-j N` / `-Jobs N`. macOS script also supports `-xcode` for Xcode project.
 
 ## Test
 

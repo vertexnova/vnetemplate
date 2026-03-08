@@ -62,17 +62,17 @@ The library optionally links to VertexNova internal dependencies when present:
 - **deps/internal/vnecommon** – Common utilities.
 - **deps/internal/vnelogging** – Logging (e.g. spdlog-based).
 
-These are not shipped with the template. Add them as git submodules from the project root:
+**In this repo (VneTemplate):** `.gitmodules` already lists these paths. Just run from the project root:
+
+```bash
+git submodule update --init --recursive
+```
+
+**In a downstream repo** that does not yet have these submodules in `.gitmodules`, add them from the project root (omit any that already exist):
 
 ```bash
 git submodule add https://github.com/vertexnova/vnecommon.git deps/internal/vnecommon
 git submodule add https://github.com/vertexnova/vnelogging.git deps/internal/vnelogging
-git submodule update --init --recursive
-```
-
-If already in `.gitmodules`, run:
-
-```bash
 git submodule update --init --recursive
 ```
 
