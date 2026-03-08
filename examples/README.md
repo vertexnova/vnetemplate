@@ -7,8 +7,13 @@ This directory contains examples demonstrating the VneTemplate API.
 From the project root (use `build/shared` or `build/static`):
 
 ```bash
-cmake -B build/shared -DVNE_TEMPLATE_EXAMPLES=ON
+# Shared library build
+cmake -B build/shared -DVNE_TEMPLATE_EXAMPLES=ON -DVNE_TEMPLATE_LIB_TYPE=shared
 cmake --build build/shared
+
+# Static library build
+cmake -B build/static -DVNE_TEMPLATE_EXAMPLES=ON -DVNE_TEMPLATE_LIB_TYPE=static
+cmake --build build/static
 ```
 
 Alternatively, `-DVNE_TEMPLATE_DEV=ON` enables both tests and examples.

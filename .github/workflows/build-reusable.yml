@@ -101,12 +101,19 @@ jobs:
           else
             echo "CACHE_BUILD_TYPE=$BUILD_TYPE" >> "$GITHUB_ENV"
           fi
+          # Validate / normalize library type: allow only empty, "shared", or "static".
+          EFFECTIVE_LIB_TYPE="shared"
           if [[ -z "$LIB_TYPE" ]]; then
-            echo "CACHE_LIB_TYPE=shared" >> "$GITHUB_ENV"
+            # Empty input => default to shared (matches CMake default).
+            :
+          elif [[ "$LIB_TYPE" == "shared" || "$LIB_TYPE" == "static" ]]; then
+            EFFECTIVE_LIB_TYPE="$LIB_TYPE"
           else
-            echo "CACHE_LIB_TYPE=$LIB_TYPE" >> "$GITHUB_ENV"
+            echo "Error: invalid lib_type '$LIB_TYPE'. Expected '', 'shared', or 'static'." >&2
+            exit 1
           fi
-          echo "BUILD_DIR=build/$CACHE_LIB_TYPE" >> "$GITHUB_ENV"
+          echo "CACHE_LIB_TYPE=$EFFECTIVE_LIB_TYPE" >> "$GITHUB_ENV"
+          echo "BUILD_DIR=build/$EFFECTIVE_LIB_TYPE" >> "$GITHUB_ENV"
 
       # Skip cache for coverage: we clean build/ right after to force instrumented rebuild,
       # so restore would be discarded and would waste time/bandwidth.
@@ -146,7 +153,6 @@ jobs:
           C_COMPILER:      ${{ inputs.c_compiler }}
           CPP_COMPILER:    ${{ inputs.cpp_compiler }}
           EXTRA_FLAGS:     ${{ inputs.extra_cmake_flags }}
-          LIB_TYPE:        ${{ inputs.lib_type }}
           WAE:             ${{ inputs.warnings_as_errors && 'ON' || 'OFF' }}
         run: |
           COVERAGE_FLAG=""
@@ -159,10 +165,11 @@ jobs:
             COMPILER_FLAGS="-DCMAKE_C_COMPILER=$C_COMPILER -DCMAKE_CXX_COMPILER=$CPP_COMPILER"
           fi
 
+          # Use validated CACHE_LIB_TYPE from previous step (empty/shared/static only).
           LIB_TYPE_FLAGS=""
-          if [[ "$LIB_TYPE" == "static" ]]; then
+          if [[ "$CACHE_LIB_TYPE" == "static" ]]; then
             LIB_TYPE_FLAGS="-DVNE_TEMPLATE_LIB_TYPE=static"
-          elif [[ "$LIB_TYPE" == "shared" || -z "$LIB_TYPE" ]]; then
+          else
             LIB_TYPE_FLAGS="-DVNE_TEMPLATE_LIB_TYPE=shared"
           fi
 
